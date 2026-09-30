@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>録音要約</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#2457d6">
+<link rel="icon" href="icon-192.png">
 <style id="appStyle">
 :root{
   --bg:#f5f6f8; --card:#fff; --ink:#1d2330; --sub:#6b7280; --line:#e3e6eb;
@@ -96,7 +99,7 @@ h2:first-child{margin-top:0}
     <button class="btn ghost sm" data-go="set">設定</button>
   </div>
   <div class="body">
-    <div class="banner" id="popBanner" style="display:none"><span class="grow">小窓で使うと便利です</span><button class="btn sm" id="popBtn">小窓で開く</button></div>
+    <div class="banner" id="popBanner" style="display:none"><span class="grow" id="popText">小窓で使うと便利です</span><button class="btn sm" id="installBtn" style="display:none">アプリとして追加</button><button class="btn sm" id="popBtn">小窓で開く</button></div>
     <div class="banner warn" id="recoverBanner" style="display:none"><span class="grow" id="recoverText"></span><button class="btn sm" id="recoverYes">復元</button><button class="btn sm" id="recoverNo">破棄</button></div>
 
     <!-- 待機 -->
@@ -409,6 +412,15 @@ function setTitle(t){ document.title=t?t+' - '+baseTitle:baseTitle; }
 /* ========== 小窓表示 ========== */
 const isPopup = window.name==='recSummaryPopup' || matchMedia('(display-mode: standalone)').matches || window.outerWidth<=520;
 if(!isPopup) $('#popBanner').style.display='flex';
+// アプリとして追加（PWA）: 以後はデスクトップ／スタートメニューから小窓で直接起動できる
+const standalone=matchMedia('(display-mode: standalone)').matches;
+if('serviceWorker' in navigator && location.protocol==='https:') navigator.serviceWorker.register('sw.js').catch(()=>{});
+let installEvt=null;
+window.addEventListener('beforeinstallprompt',e=>{ e.preventDefault(); installEvt=e; $('#installBtn').style.display=''; $('#popText').textContent='アプリとして追加すると、次から小窓で直接起動できます'; });
+$('#installBtn').onclick=async()=>{ if(!installEvt) return; installEvt.prompt(); const r=await installEvt.userChoice; installEvt=null; $('#installBtn').style.display='none'; if(r.outcome==='accepted') $('#popText').textContent='追加しました。デスクトップかスタートメニューの「録音要約」から起動してください。'; };
+window.addEventListener('appinstalled',()=>{ $('#installBtn').style.display='none'; });
+// アプリとして起動したとき、初回だけ小窓サイズに整える（以後はWindowsが前回のサイズを覚える）
+if(standalone){ try{ if(!localStorage.getItem('recSummary.sized')){ window.resizeTo(400,700); window.moveTo(screen.availWidth-420,40); localStorage.setItem('recSummary.sized','1'); } }catch(e){} }
 $('#popBtn').onclick=()=>{
   const w=window.open(location.href,'recSummaryPopup','popup,width=400,height=680,left='+(screen.availWidth-420)+',top=40');
   if(w){ $('#popBanner').innerHTML='<span class="grow">小窓で開きました。このタブは閉じて構いません。</span>'; }
