@@ -38,6 +38,8 @@ body{margin:0;background:var(--bg);color:var(--ink);font:13px/1.55 "Yu Gothic UI
 .btn:hover{background:#f3f4f6}
 .btn.pri{background:var(--pri);border-color:var(--pri);color:#fff;font-weight:700}
 .btn.pri:hover{filter:brightness(1.08)}
+.btn.rec{background:var(--rec);border-color:var(--rec);color:#fff;font-weight:700}
+.btn.rec:hover{filter:brightness(1.08);background:var(--rec)}
 .btn.wide{width:100%;padding:10px;font-size:14px}
 .btn.sm{padding:3px 9px;font-size:12px}
 .btn.ghost{border-color:transparent;background:none;color:var(--sub)}
@@ -50,7 +52,7 @@ textarea{resize:none}
 .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px}
 .center{text-align:center}
 .small{font-size:11px;color:var(--sub)}
-.recbtn{width:112px;height:112px;border-radius:50%;border:6px solid #fde2e2;background:var(--rec);color:#fff;font:inherit;font-size:15px;font-weight:700;cursor:pointer;margin:6px auto;display:block;box-shadow:0 2px 8px rgba(220,38,38,.25)}
+.recbtn{width:180px;height:180px;border-radius:50%;border:10px solid #fde2e2;background:var(--rec);color:#fff;font:inherit;font-size:24px;letter-spacing:2px;font-weight:700;cursor:pointer;margin:6px auto;display:block;box-shadow:0 2px 8px rgba(220,38,38,.25)}
 .recbtn:hover{filter:brightness(1.06)}
 .timer{font-family:var(--mono);font-size:34px;text-align:center;letter-spacing:1px}
 .status{display:flex;align-items:center;justify-content:center;gap:8px;color:var(--rec);font-weight:700}
@@ -88,16 +90,51 @@ audio{width:100%;height:34px}
 label.f{display:block;margin:10px 0 3px;font-size:11px;color:var(--sub)}
 .chk{display:flex;gap:6px;align-items:flex-start;margin-top:6px;cursor:pointer}
 .chk input{margin-top:3px}
+.tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.tag{display:inline-flex;align-items:center;gap:4px;background:#eef2f7;border:1px solid var(--line);border-radius:14px;padding:3px 4px 3px 10px;font-size:13px}
+.tag button{border:0;background:none;color:var(--sub);font-size:15px;line-height:1;cursor:pointer;padding:0 6px}
+.tag button:hover{color:var(--err)}
 h2{font-size:14px;margin:4px 0 0}
 .hitem{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:8px 10px;cursor:pointer}
 .hitem:hover{border-color:var(--pri)}
 .hitem .tt{font-weight:700;font-size:13px}
 .hitem .mm{font-size:11px;color:var(--sub)}
 .list{display:flex;flex-direction:column;gap:6px;overflow:auto;flex:1;min-height:0}
-.toast{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);background:#1d2330;color:#fff;padding:7px 14px;border-radius:6px;font-size:12px;opacity:0;transition:.2s;pointer-events:none;z-index:9}
+.toast{position:fixed;top:calc(56px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);background:#1d2330;color:#fff;padding:7px 14px;border-radius:6px;font-size:12px;opacity:0;transition:.2s;pointer-events:none;z-index:9}
 .toast.on{opacity:1}
 .big-msg{font-size:14px;line-height:1.8}
 .who{font-size:11px;color:var(--sub);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:130px}
+
+/* ===== 画面いっぱいに使うレイアウト（iPhone基準） ===== */
+.btn{min-height:40px}
+.btn.wide{padding:14px;font-size:16px;min-height:54px}
+select,input[type=text],input[type=email]{min-height:46px}
+#s-idle>.card.center{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px}
+.recbtn{width:min(66vw,36vh,270px);height:min(66vw,36vh,270px);font-size:34px;border-width:12px;letter-spacing:4px}
+#s-idle .drop{padding:16px;font-size:13px}
+#s-rec>.card{flex:1;display:flex;flex-direction:column;justify-content:center;gap:18px}
+#s-rec .status{font-size:20px}
+#s-rec .dot{width:14px;height:14px}
+#s-rec .timer{font-size:clamp(56px,11vh,84px)}
+#s-rec .meter{height:14px;border-radius:7px}
+#s-rec .acts .btn{min-height:76px;font-size:20px}
+#s-done>.card{flex:1;display:flex;flex-direction:column;justify-content:center;gap:16px}
+#s-done #doneName{font-size:16px}
+#s-done #sumBtn{min-height:76px;font-size:21px}
+#s-done .acts .btn{min-height:54px;font-size:15px}
+#s-proc>.card{flex:1;display:flex;flex-direction:column;justify-content:center;padding:24px}
+#s-proc .steps li{font-size:19px;padding:14px 0;gap:12px}
+#s-proc .steps li::before{width:22px;height:22px}
+#s-proc #procTime{font-size:15px;margin-top:12px}
+#s-reg.on,#s-wait.on{justify-content:center}
+#s-reg>.card,#s-wait>.card{padding:24px}
+#s-reg .f{font-size:13px}
+.out{font-size:15px}
+#s-reg h2{font-size:20px}
+.big-msg{font-size:17px}
+#s-result .acts .btn{min-height:54px;font-size:16px}
+#s-result #newBtn{min-height:64px;font-size:19px}
+#s-paste #pasteSumBtn{min-height:64px;font-size:19px}
 </style>
 </head>
 <body>
@@ -133,7 +170,7 @@ h2{font-size:14px;margin:4px 0 0}
     <!-- 許可待ち -->
     <div class="scr" id="s-wait">
       <div class="card">
-        <div class="big-msg" id="waitText">申請を受け付けました。<br>管理者の許可後に「再読み込み」を押してください。</div>
+        <div class="big-msg" id="waitText">申請を受け付けました。<br>管理者が許可すると、自動で使えるようになります。</div>
         <div class="small" id="waitEmail" style="margin-top:6px"></div>
         <div class="small" id="waitRow"></div>
         <div class="small" id="waitPoll" style="margin-top:4px"></div>
@@ -147,7 +184,7 @@ h2{font-size:14px;margin:4px 0 0}
     <div class="scr" id="s-idle">
       <div class="row">
         <select id="cSite" class="grow" title="事業所"></select>
-        <input type="text" id="cType" class="grow" placeholder="会議種別" title="会議種別">
+        <select id="cType" class="grow" title="会議種別"></select>
       </div>
       <select id="cChannel" title="投稿先" style="display:none"></select>
       <div class="card center">
@@ -170,7 +207,7 @@ h2{font-size:14px;margin:4px 0 0}
         <button class="btn" id="pasteClearBtn">クリア</button>
       </div>
       <button class="btn pri wide" id="pasteSumBtn">要約する</button>
-      <button class="btn sm" id="pasteBackBtn" style="align-self:flex-start">戻る</button>
+      <button class="btn wide" id="pasteBackBtn">戻る</button>
       <div class="msg" id="pasteMsg"></div>
     </div>
 
@@ -229,10 +266,8 @@ h2{font-size:14px;margin:4px 0 0}
         <button class="btn pri" id="slackBtn">Slackに送信</button>
         <button class="btn" id="copyBtn">コピー</button>
       </div>
-      <div class="row">
-        <span class="small grow" id="resMeta"></span>
-        <button class="btn sm" id="newBtn">新しい録音</button>
-      </div>
+      <button class="btn wide rec" id="newBtn">新しい録音</button>
+      <div class="small" id="resMeta"></div>
     </div>
 
     <!-- 履歴 -->
@@ -251,7 +286,18 @@ h2{font-size:14px;margin:4px 0 0}
         <label class="chk"><input type="checkbox" id="sDel" checked> 処理後、Google側の音声をすぐ削除する</label>
         <label class="chk"><input type="checkbox" id="sAwake" checked> アプリを開いている間は画面を消さない（自動ロックを防ぐ）</label>
       </div>
-      <div class="small">要約の方法・用語辞書・投稿先・APIキーは管理者が管理しています。</div>
+      <div class="card">
+        <b>拠点</b>
+        <div class="tags" id="siteTags"></div>
+        <div class="row" style="margin-top:8px"><input type="text" id="siteNew" class="grow" placeholder="新しい拠点名"><button class="btn" id="siteAdd">追加</button></div>
+        <button class="btn sm" id="siteReset" style="margin-top:6px">管理者の一覧に戻す</button>
+      </div>
+      <div class="card">
+        <b>会議種別</b>
+        <div class="tags" id="typeTags"></div>
+        <div class="row" style="margin-top:8px"><input type="text" id="typeNew" class="grow" placeholder="新しい会議種別（例：夕礼）"><button class="btn" id="typeAdd">追加</button></div>
+      </div>
+      <div class="small">拠点・会議種別の変更はこの端末だけに反映されます。用語辞書・投稿先・APIキーは管理者が管理しています。</div>
       <div class="acts">
         <button class="btn pri" id="sSave">保存</button>
         <button class="btn" data-go="back">閉じる</button>
@@ -396,20 +442,48 @@ function enterApp(j){
   $('#who').textContent=j.name||j.email; navVisible(true);
   applyIdle(); go('idle'); listMics(); checkRecover();
 }
+const DEFAULT_TYPES=['朝礼','夕礼','会議','ミーティング'];
+const siteList=()=>Array.isArray(prefs.sites)?prefs.sites:((cfg&&cfg.sites)||[]);
+const typeList=()=>Array.isArray(prefs.types)&&prefs.types.length?prefs.types:DEFAULT_TYPES.slice();
+function renderTags(){
+  const tag=(v,kind)=>'<span class="tag">'+esc(v)+'<button data-del="'+kind+'" data-v="'+esc(v)+'" title="削除">×</button></span>';
+  $('#siteTags').innerHTML=siteList().map(v=>tag(v,'site')).join('')||'<span class="small">登録なし</span>';
+  $('#typeTags').innerHTML=typeList().map(v=>tag(v,'type')).join('');
+}
+function addItem(kind){
+  const inp=$(kind==='site'?'#siteNew':'#typeNew'), v=inp.value.trim().slice(0,30); if(!v) return;
+  const list=kind==='site'?siteList().slice():typeList().slice();
+  if(list.includes(v)){ toast('すでに登録されています'); return; }
+  list.push(v); if(kind==='site') prefs.sites=list; else prefs.types=list;
+  savePrefs(); inp.value=''; renderTags(); if(cfg) applyIdle(); toast('「'+v+'」を追加しました');
+}
+function delItem(kind,v){
+  const list=(kind==='site'?siteList():typeList()).filter(x=>x!==v);
+  if(kind==='type'&&!list.length){ toast('会議種別は1つ以上必要です'); return; }
+  if(!W().confirm('「'+v+'」を削除しますか？')) return;
+  if(kind==='site'){ prefs.sites=list; if(prefs.site===v) prefs.site=''; } else { prefs.types=list; if(prefs.type===v) prefs.type=list[0]; }
+  savePrefs(); renderTags(); if(cfg) applyIdle();
+}
+$('#siteAdd').onclick=()=>addItem('site'); $('#typeAdd').onclick=()=>addItem('type');
+$('#siteNew').addEventListener('keydown',e=>{ if(e.key==='Enter') addItem('site'); });
+$('#typeNew').addEventListener('keydown',e=>{ if(e.key==='Enter') addItem('type'); });
+$('#s-set').addEventListener('click',e=>{ const b=e.target.closest('[data-del]'); if(b) delItem(b.dataset.del,b.dataset.v); });
+$('#siteReset').onclick=()=>{ if(!W().confirm('拠点の一覧を、管理者が設定した一覧に戻しますか？')) return; delete prefs.sites; savePrefs(); renderTags(); if(cfg) applyIdle(); };
 function applyIdle(){
-  const sites=cfg.sites||[]; const want=prefs.site||cfg.defaultSite||sites[0]||'';
+  const sites=siteList(); const want=sites.includes(prefs.site)?prefs.site:(cfg.defaultSite&&sites.includes(cfg.defaultSite)?cfg.defaultSite:(sites[0]||''));
   $('#cSite').innerHTML='<option value="">事業所（未指定）</option>'+sites.map(x=>'<option'+(x===want?' selected':'')+'>'+esc(x)+'</option>').join('');
-  $('#cType').value=prefs.type||'朝礼';
+  const types=typeList(); const wt=types.includes(prefs.type)?prefs.type:types[0];
+  $('#cType').innerHTML=types.map(x=>'<option'+(x===wt?' selected':'')+'>'+esc(x)+'</option>').join('');
   const list=(cfg.channels||[]).filter(x=>x.configured), ch=$('#cChannel');
   if(cfg.lockedChannel==null && list.length>1){ ch.style.display=''; ch.innerHTML=list.map(x=>'<option value="'+x.id+'"'+(x.id==prefs.channel?' selected':'')+'>投稿先: '+esc(x.name)+'</option>').join(''); }
   else { ch.style.display='none'; if(list.length===1) prefs.channel=list[0].id; }
 }
 $('#cSite').onchange=()=>{ prefs.site=$('#cSite').value; savePrefs(); };
-$('#cType').oninput=()=>{ prefs.type=$('#cType').value.trim()||'朝礼'; savePrefs(); };
+$('#cType').onchange=()=>{ prefs.type=$('#cType').value; savePrefs(); };
 $('#cChannel').onchange=()=>{ prefs.channel=Number($('#cChannel').value); savePrefs(); };
 
 /* ========== 設定（端末ごと） ========== */
-function fillSet(){ $('#setWho').textContent=me?((me.name?me.name+'　':'')+me.email):''; $('#sSaveAudio').checked=prefs.saveAudio; $('#sNotify').checked=prefs.notify; $('#sDel').checked=prefs.del; $('#sAwake').checked=prefs.keepAwake!==false; hideMsg('#sMsg'); }
+function fillSet(){ renderTags(); $('#setWho').textContent=me?((me.name?me.name+'　':'')+me.email):''; $('#sSaveAudio').checked=prefs.saveAudio; $('#sNotify').checked=prefs.notify; $('#sDel').checked=prefs.del; $('#sAwake').checked=prefs.keepAwake!==false; hideMsg('#sMsg'); }
 $('#sSave').onclick=()=>{
   prefs.saveAudio=$('#sSaveAudio').checked; prefs.notify=$('#sNotify').checked; prefs.del=$('#sDel').checked; prefs.keepAwake=$('#sAwake').checked; savePrefs(); applyAwake();
   showMsg('#sMsg','ok','保存しました。');
@@ -694,7 +768,7 @@ async function runTextSummary(){
   try{
     step('sm','run');
     const d=new Date(), date=d.getFullYear()+'/'+pad(d.getMonth()+1)+'/'+pad(d.getDate());
-    const site=$('#cSite').value, type=$('#cType').value.trim()||'朝礼';
+    const site=$('#cSite').value, type=($('#cType').value||'朝礼');
     const j=await api('summarize',{text,site,date,meetingType:type,note:'貼り付けられた文字起こしテキスト'});
     step('sm','done');
     const rec={id:'r'+Date.now(),createdAt:Date.now(),recordedAt:Date.now(),title:type+'サマリー '+(site?site+' ':'')+date,duration:0,source:'text',
@@ -742,7 +816,7 @@ async function runPipeline(){
     cur='sm'; step('sm','run');
     let text=tr; if(text.length>58000) text=text.replace(/^\s*\[[\d:]+\]\s*/gm,'');
     const rd=new Date(file.lastModified||Date.now()), date=rd.getFullYear()+'/'+pad(rd.getMonth()+1)+'/'+pad(rd.getDate());
-    const site=$('#cSite').value, type=$('#cType').value.trim()||'朝礼';
+    const site=$('#cSite').value, type=($('#cType').value||'朝礼');
     const j=await api('summarize',{text,site,date,meetingType:type,note:'PCで録音した音声をGeminiで文字起こし（話者名・時刻付き）'});
     step('sm','done');
     const rec={id:'r'+Date.now(),createdAt:Date.now(),recordedAt:file.lastModified||Date.now(),title:type+'サマリー '+(site?site+' ':'')+date,duration:audio.duration,
