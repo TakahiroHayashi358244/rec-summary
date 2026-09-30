@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>録音要約</title>
+<style id="appStyle">
+:root{
+  --bg:#f5f6f8; --card:#fff; --ink:#1d2330; --sub:#6b7280; --line:#e3e6eb;
+  --pri:#2457d6; --pri-weak:#e8eefc; --ok:#15803d; --ok-weak:#e7f6ec;
+  --warn:#b45309; --warn-weak:#fdf3e2; --err:#b91c1c; --err-weak:#fdecec; --rec:#dc2626;
+  --mono:ui-monospace,"Cascadia Mono",Consolas,monospace;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:13px/1.55 "Yu Gothic UI","Meiryo","Hiragino Sans",system-ui,sans-serif}
+#app{max-width:440px;margin:0 auto;min-height:100%;display:flex;flex-direction:column;background:var(--bg)}
+.top{display:flex;align-items:center;gap:6px;padding:8px 10px;background:var(--card);border-bottom:1px solid var(--line)}
+.top h1{font-size:14px;margin:0;flex:1;font-weight:700}
+.body{flex:1;padding:12px;display:flex;flex-direction:column;gap:10px;min-height:0}
+.scr{display:none;flex-direction:column;gap:10px;flex:1;min-height:0}
+.scr.on{display:flex}
+.btn{border:1px solid #cfd5de;background:#fff;color:var(--ink);padding:6px 12px;border-radius:6px;font:inherit;cursor:pointer;white-space:nowrap}
+.btn:hover{background:#f3f4f6}
+.btn.pri{background:var(--pri);border-color:var(--pri);color:#fff;font-weight:700}
+.btn.pri:hover{filter:brightness(1.08)}
+.btn.wide{width:100%;padding:10px;font-size:14px}
+.btn.sm{padding:3px 9px;font-size:12px}
+.btn.ghost{border-color:transparent;background:none;color:var(--sub)}
+.btn.ghost:hover{background:#eef0f3}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.row{display:flex;gap:8px;align-items:center}
+.row>.grow{flex:1}
+input[type=text],input[type=password],select,textarea{width:100%;font:inherit;padding:6px 9px;border:1px solid #cfd5de;border-radius:6px;background:#fff;color:var(--ink)}
+textarea{resize:none}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px}
+.center{text-align:center}
+.small{font-size:11px;color:var(--sub)}
+.recbtn{width:112px;height:112px;border-radius:50%;border:6px solid #fde2e2;background:var(--rec);color:#fff;font:inherit;font-size:15px;font-weight:700;cursor:pointer;margin:6px auto;display:block;box-shadow:0 2px 8px rgba(220,38,38,.25)}
+.recbtn:hover{filter:brightness(1.06)}
+.timer{font-family:var(--mono);font-size:34px;text-align:center;letter-spacing:1px}
+.status{display:flex;align-items:center;justify-content:center;gap:8px;color:var(--rec);font-weight:700}
+.status.paused{color:var(--warn)}
+.dot{width:10px;height:10px;border-radius:50%;background:currentColor;animation:bl 1s infinite}
+.status.paused .dot{animation:none}
+@keyframes bl{50%{opacity:.2}}
+.meter{height:8px;background:#e5e7eb;border-radius:4px;overflow:hidden}
+.meter i{display:block;height:100%;width:0;background:var(--ok);transition:width .08s}
+.drop{border:1.5px dashed #c3cad5;border-radius:8px;padding:8px;text-align:center;color:var(--sub);font-size:12px;cursor:pointer}
+.drop.over{border-color:var(--pri);background:var(--pri-weak);color:var(--pri)}
+audio{width:100%;height:34px}
+.steps{list-style:none;margin:0;padding:0}
+.steps li{display:flex;align-items:center;gap:8px;padding:5px 0;color:var(--sub)}
+.steps li::before{content:"";width:13px;height:13px;border-radius:50%;border:2px solid #cfd5de;flex:none}
+.steps li.run{color:var(--pri);font-weight:700}
+.steps li.run::before{border-color:var(--pri);border-top-color:transparent;animation:sp .8s linear infinite}
+.steps li.done{color:var(--ok)}
+.steps li.done::before{background:var(--ok);border-color:var(--ok)}
+.steps li.fail{color:var(--err)}
+.steps li.fail::before{background:var(--err);border-color:var(--err)}
+@keyframes sp{to{transform:rotate(360deg)}}
+.msg{padding:8px 10px;border-radius:8px;font-size:12px;white-space:pre-wrap;display:none}
+.msg.err{display:block;background:var(--err-weak);color:var(--err)}
+.msg.warn{display:block;background:var(--warn-weak);color:var(--warn)}
+.msg.ok{display:block;background:var(--ok-weak);color:var(--ok)}
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--line)}
+.tabs button{border:0;background:none;padding:6px 10px;font:inherit;color:var(--sub);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}
+.tabs button.on{color:var(--pri);border-bottom-color:var(--pri);font-weight:700}
+.out{flex:1;min-height:180px;font-size:13px;line-height:1.7}
+.acts{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.banner{background:var(--pri-weak);color:var(--pri);border-radius:8px;padding:8px 10px;font-size:12px;display:flex;gap:8px;align-items:center}
+.banner.warn{background:var(--warn-weak);color:var(--warn)}
+.banner .grow{flex:1}
+label.f{display:block;margin:10px 0 3px;font-size:11px;color:var(--sub)}
+.hint{font-size:11px;color:var(--sub);margin-top:3px}
+.chk{display:flex;gap:6px;align-items:flex-start;margin-top:6px;cursor:pointer}
+.chk input{margin-top:3px}
+h2{font-size:13px;margin:14px 0 4px}
+h2:first-child{margin-top:0}
+.hitem{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:8px 10px;cursor:pointer}
+.hitem:hover{border-color:var(--pri)}
+.hitem .tt{font-weight:700;font-size:13px}
+.hitem .mm{font-size:11px;color:var(--sub)}
+.list{display:flex;flex-direction:column;gap:6px;overflow:auto;flex:1;min-height:0}
+.toast{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);background:#1d2330;color:#fff;padding:7px 14px;border-radius:6px;font-size:12px;opacity:0;transition:.2s;pointer-events:none;z-index:9}
+.toast.on{opacity:1}
+.scroll{overflow:auto;flex:1;min-height:0}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="top">
+    <h1 id="appTitle">録音要約</h1>
+    <button class="btn ghost sm" id="pipBtn" title="他のウィンドウより手前に表示し続けます" style="display:none">最前面</button>
+    <button class="btn ghost sm" data-go="hist">履歴</button>
+    <button class="btn ghost sm" data-go="set">設定</button>
+  </div>
+  <div class="body">
+    <div class="banner" id="popBanner" style="display:none"><span class="grow">小窓で使うと便利です</span><button class="btn sm" id="popBtn">小窓で開く</button></div>
+    <div class="banner warn" id="recoverBanner" style="display:none"><span class="grow" id="recoverText"></span><button class="btn sm" id="recoverYes">復元</button><button class="btn sm" id="recoverNo">破棄</button></div>
+
+    <!-- 待機 -->
+    <div class="scr on" id="s-idle">
+      <input type="text" id="title" placeholder="会議名（任意・空欄ならAIが付けます）">
+      <div id="choreiFields" style="display:none">
+        <div class="row">
+          <select id="cSite" class="grow" title="事業所"></select>
+          <input type="text" id="cType" class="grow" placeholder="会議種別" title="会議種別">
+        </div>
+        <select id="cChannel" title="投稿先" style="margin-top:8px;display:none"></select>
+      </div>
+      <div class="card center">
+        <button class="recbtn" id="recBtn">録音</button>
+        <div class="small">録音中は別の作業をしていて大丈夫です（このウィンドウは閉じないでください）</div>
+      </div>
+      <select id="mic" title="マイク"><option value="">既定のマイク</option></select>
+      <div class="drop" id="drop">録音済みファイル（サウンド レコーダーなど）はここにドロップ／クリックで選択</div>
+      <input type="file" id="fileIn" accept="audio/*,.m4a,.mp3,.wav,.webm,.aac,.ogg,.flac" hidden>
+      <div class="msg" id="idleMsg"></div>
+    </div>
+
+    <!-- 録音中 -->
+    <div class="scr" id="s-rec">
+      <div class="card">
+        <div class="status" id="recStatus"><span class="dot"></span><span id="recLabel">録音中</span></div>
+        <div class="timer" id="recTime">0:00</div>
+        <div class="meter"><i id="meter"></i></div>
+        <div class="small center" style="margin-top:6px">緑のバーが動いていれば音を拾えています</div>
+      </div>
+      <div class="acts">
+        <button class="btn wide" id="pauseBtn">一時停止</button>
+        <button class="btn pri wide" id="stopBtn">停止</button>
+      </div>
+    </div>
+
+    <!-- 録音後 -->
+    <div class="scr" id="s-done">
+      <div class="card">
+        <div class="row"><b class="grow" id="doneName"></b><span class="small" id="doneMeta"></span></div>
+        <audio id="player" controls style="margin-top:8px"></audio>
+      </div>
+      <button class="btn pri wide" id="sumBtn">要約する</button>
+      <div class="acts">
+        <button class="btn" id="saveAudioBtn">音声を保存</button>
+        <button class="btn" id="discardBtn">破棄して戻る</button>
+      </div>
+      <div class="msg" id="doneMsg"></div>
+    </div>
+
+    <!-- 処理中 -->
+    <div class="scr" id="s-proc">
+      <div class="card">
+        <ul class="steps" id="steps">
+          <li data-s="up">音声をアップロード</li>
+          <li data-s="tr">文字起こし</li>
+          <li data-s="sm">要約</li>
+        </ul>
+        <div class="small" id="procTime" style="margin-top:6px"></div>
+      </div>
+      <div class="small">処理はバックグラウンドで進みます。ウィンドウを最小化しても大丈夫です（閉じると中断します）。</div>
+      <div class="msg" id="procMsg"></div>
+      <div class="acts" id="procActs" style="display:none">
+        <button class="btn pri" id="retryBtn">再実行</button>
+        <button class="btn" id="backDoneBtn">戻る</button>
+      </div>
+    </div>
+
+    <!-- 結果 -->
+    <div class="scr" id="s-result">
+      <div class="tabs"><button data-t="sum" class="on">要約</button><button data-t="tr">文字起こし</button></div>
+      <textarea class="out" id="outSum" spellcheck="false"></textarea>
+      <textarea class="out" id="outTr" spellcheck="false" style="display:none"></textarea>
+      <div class="acts">
+        <button class="btn pri" id="slackBtn">Slackに送信</button>
+        <button class="btn" id="copyBtn">コピー</button>
+      </div>
+      <div class="row">
+        <span class="small grow" id="resMeta"></span>
+        <button class="btn sm" id="newBtn">新しい録音</button>
+      </div>
+    </div>
+
+    <!-- 履歴 -->
+    <div class="scr" id="s-hist">
+      <div class="row"><input type="text" id="hq" class="grow" placeholder="検索"><button class="btn sm" data-go="back">閉じる</button></div>
+      <div class="list" id="hList"></div>
+    </div>
+
+    <!-- 設定 -->
+    <div class="scr" id="s-set">
+      <div class="scroll">
+        <h2>要約と送信</h2>
+        <label class="f">要約の方法</label>
+        <select id="sSumMode">
+          <option value="chorei">朝礼サマリー（既存のGAS）と連携</option>
+          <option value="gemini">このアプリで要約（Gemini）</option>
+        </select>
+        <div id="choreiBox">
+          <label class="f">朝礼サマリーのURL（/exec で終わるURL）</label>
+          <input type="text" id="sChoreiUrl" placeholder="https://script.google.com/macros/s/.../exec">
+          <label class="f">連携キー（GASのスクリプト プロパティ PC_API_TOKEN の値）</label>
+          <input type="password" id="sChoreiToken">
+          <div class="hint">要約（Claude）・Slack投稿・履歴シート・1日の回数上限は、朝礼サマリーの設定がそのまま使われます。このアプリは文字起こし（Gemini）だけを行います。</div>
+        </div>
+
+        <h2>Gemini API（文字起こし）</h2>
+        <label class="f">APIキー（このPCのブラウザにだけ保存）</label>
+        <div class="row"><input type="password" id="sKey" class="grow" placeholder="AIza..."><button class="btn sm" id="sKeyShow">表示</button></div>
+        <label class="f">モデル</label>
+        <input type="text" id="sModel">
+        <div class="hint">既定は gemini-3.8-flash。費用を抑えるなら gemini-3.5-flash-lite。</div>
+        <label class="f">業務用語辞書（1行に1語）</label>
+        <textarea id="sGloss" rows="4" style="resize:vertical"></textarea>
+        <div id="geminiOnly">
+        <label class="f">要約の詳しさ</label>
+        <select id="sDetail"><option value="short">簡潔</option><option value="normal">標準</option><option value="long">詳細</option></select>
+
+        <h2>Slack送信</h2>
+        <label class="f">送信方法</label>
+        <select id="sSlackMode">
+          <option value="gas">GAS経由（推奨）</option>
+          <option value="webhook">Incoming Webhookに直接</option>
+          <option value="none">使わない</option>
+        </select>
+        <div id="gasBox">
+          <label class="f">GAS WebアプリのURL（/exec で終わるURL）</label>
+          <input type="text" id="sGasUrl" placeholder="https://script.google.com/macros/s/.../exec">
+          <label class="f">合言葉（GASのAPP_TOKENと同じ値）</label>
+          <input type="password" id="sGasToken">
+        </div>
+        <div id="hookBox">
+          <label class="f">Incoming Webhook URL</label>
+          <input type="password" id="sHook" placeholder="https://hooks.slack.com/services/...">
+          <div class="hint">直接送信では送信結果を確認できません（ブラウザの制限）。確実に届いたか確認したい場合はGAS経由を使ってください。</div>
+        </div>
+        <label class="chk"><input type="checkbox" id="sSendTr"> 文字起こし全文も送る（GASのBot方式ならスレッドに、それ以外は続けて投稿）</label>
+        </div>
+
+        <h2>動作</h2>
+        <label class="chk"><input type="checkbox" id="sDel"> 処理後、Google側の音声をすぐ削除する</label>
+        <label class="chk"><input type="checkbox" id="sSaveAudio"> 履歴に音声も保存する</label>
+        <label class="chk"><input type="checkbox" id="sNotify"> 要約が終わったらWindowsの通知を出す</label>
+
+        <div class="acts" style="margin-top:14px">
+          <button class="btn pri" id="sSave">保存</button>
+          <button class="btn" id="sTest">接続テスト</button>
+        </div>
+        <div class="msg" id="sMsg" style="margin-top:8px"></div>
+        <div style="margin-top:10px"><button class="btn sm" data-go="back">閉じる</button></div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+const BASE='https://generativelanguage.googleapis.com';
+const INLINE_MAX=14*1024*1024, MAX_CONT=6, SLACK_CHUNK=3500;
+const DEFAULT_GLOSS=['ストウ','リビン','ピック','パック','シップ','ドック','着車','ExSD','DPMO','UPH','TOT','FCLM','Rodeo','HFO1','朝礼','KY活動','ヒヤリハット'].join('\n');
+let pipWin=null;
+const _qs=document.querySelector.bind(document);
+// 最前面表示中は要素が小窓側のdocumentへ移るため、両方を探す
+function $(s,doc){ if(doc) return doc.querySelector(s); return (pipWin&&pipWin.document.querySelector(s))||_qs(s); }
+const W=()=>pipWin||window;
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmtDur=s=>{s=Math.round(s||0);const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60;return(h?h+':'+String(m).padStart(2,'0'):m)+':'+String(x).padStart(2,'0');};
+const fmtSize=b=>b>1048576?(b/1048576).toFixed(1)+' MB':Math.ceil(b/1024)+' KB';
+const pad=n=>String(n).padStart(2,'0');
+const fmtDate=t=>{const d=new Date(t);return d.getFullYear()+'/'+pad(d.getMonth()+1)+'/'+pad(d.getDate())+' '+pad(d.getHours())+':'+pad(d.getMinutes());};
+const ymd=t=>{const d=new Date(t);return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());};
+
+/* ========== 設定 ========== */
+const S_KEY='recSummary.settings';
+function loadSettings(){
+  let s={}; try{s=JSON.parse(localStorage.getItem(S_KEY)||'{}');}catch(e){}
+  if(!s.apiKey){ for(const k of ['voiceTranscribe.settings','voiceSummary.settings']){ try{const o=JSON.parse(localStorage.getItem(k)||'{}'); if(o.apiKey){s.apiKey=o.apiKey;break;}}catch(e){} } }
+  return Object.assign({apiKey:'',model:'gemini-3.8-flash',detail:'short',gloss:DEFAULT_GLOSS,slackMode:'gas',gasUrl:'',gasToken:'',hook:'',sendTr:false,del:true,saveAudio:false,notify:true,mic:'',sumMode:'chorei',choreiUrl:'',choreiToken:'',choreiCfg:null,cSite:'',cType:'朝礼',cChannel:0},s);
+}
+function saveSettings(){ try{localStorage.setItem(S_KEY,JSON.stringify(settings));}catch(e){W().alert('設定を保存できませんでした: '+e.message);} }
+let settings=loadSettings();
+function fillSettings(){
+  $('#sKey').value=settings.apiKey; $('#sModel').value=settings.model; $('#sDetail').value=settings.detail; $('#sGloss').value=settings.gloss;
+  $('#sSlackMode').value=settings.slackMode; $('#sGasUrl').value=settings.gasUrl; $('#sGasToken').value=settings.gasToken; $('#sHook').value=settings.hook;
+  $('#sSendTr').checked=settings.sendTr; $('#sDel').checked=settings.del; $('#sSaveAudio').checked=settings.saveAudio; $('#sNotify').checked=settings.notify;
+  $('#sSumMode').value=settings.sumMode; $('#sChoreiUrl').value=settings.choreiUrl; $('#sChoreiToken').value=settings.choreiToken;
+  slackBoxes(); modeBoxes();
+}
+function readSettingsForm(){
+  return Object.assign({},settings,{apiKey:$('#sKey').value.trim(),model:$('#sModel').value.trim()||'gemini-3.8-flash',detail:$('#sDetail').value,gloss:$('#sGloss').value,
+    slackMode:$('#sSlackMode').value,gasUrl:$('#sGasUrl').value.trim(),gasToken:$('#sGasToken').value.trim(),hook:$('#sHook').value.trim(),
+    sendTr:$('#sSendTr').checked,del:$('#sDel').checked,saveAudio:$('#sSaveAudio').checked,notify:$('#sNotify').checked,
+    sumMode:$('#sSumMode').value,choreiUrl:$('#sChoreiUrl').value.trim(),choreiToken:$('#sChoreiToken').value.trim()});
+}
+function slackBoxes(){ const m=$('#sSlackMode').value; $('#gasBox').style.display=m==='gas'?'':'none'; $('#hookBox').style.display=m==='webhook'?'':'none'; }
+$('#sSlackMode').onchange=slackBoxes;
+function modeBoxes(){ const c=$('#sSumMode').value==='chorei'; $('#choreiBox').style.display=c?'':'none'; $('#geminiOnly').style.display=c?'none':''; }
+$('#sSumMode').onchange=modeBoxes;
+$('#sKeyShow').onclick=e=>{const i=$('#sKey');i.type=i.type==='password'?'text':'password';e.target.textContent=i.type==='password'?'表示':'隠す';};
+$('#sSave').onclick=()=>{
+  settings=readSettingsForm(); saveSettings(); showMsg('#sMsg','ok','保存しました。');
+  if(settings.sumMode==='chorei'&&settings.choreiUrl) refreshChoreiCfg(true); else applyIdleMode();
+  if(settings.notify && 'Notification' in window && Notification.permission==='default') Notification.requestPermission();
+};
+$('#sTest').onclick=async()=>{
+  const s=readSettingsForm(); const out=[];
+  showMsg('#sMsg','warn','テスト中...');
+  try{ const r=await generate(s.apiKey,s.model,[{role:'user',parts:[{text:'「OK」とだけ返答してください。'}]}],{maxOutputTokens:50}); out.push('Gemini: OK（'+s.model+'）'); }
+  catch(e){ out.push('Gemini: NG\n'+e.message); }
+  if(s.sumMode==='chorei'){
+    try{ const c=await gasCall('config',{},s); settings.choreiCfg=c; saveSettings(); applyIdleMode();
+      out.push('朝礼サマリー: OK（本日の要約 '+c.usedToday+(c.dailyLimit?'/'+c.dailyLimit:'')+'回'+(c.hasApiKey?'':'、Claude APIキー未設定')+'）'); }
+    catch(e){ out.push('朝礼サマリー: NG\n'+e.message); }
+  }else if(s.slackMode!=='none'){
+    try{ await slackSend(s,'[録音要約] 接続テストです。このメッセージが届いていれば設定は正しいです。',''); out.push(s.slackMode==='gas'?'Slack: OK（テストメッセージを送信しました）':'Slack: 送信しました（届いたかSlackで確認してください）'); }
+    catch(e){ out.push('Slack: NG\n'+e.message); }
+  }
+  showMsg('#sMsg',out.some(x=>x.includes('NG'))?'err':'ok',out.join('\n'));
+};
+const glossList=()=>settings.gloss.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+
+/* ========== 朝礼サマリー（既存GAS）連携 ========== */
+async function gasCall(action,payload,s){
+  s=s||settings;
+  if(!s.choreiUrl) throw new Error('朝礼サマリーのURLが未設定です。「設定」で入力してください。');
+  let res;
+  try{ res=await fetch(s.choreiUrl,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(Object.assign({token:s.choreiToken,action},payload||{}))}); }
+  catch(e){ throw new Error('朝礼サマリーに接続できませんでした。URLと、デプロイの「アクセスできるユーザー：全員」を確認してください。'); }
+  let j; try{ j=await res.json(); }catch(e){ throw new Error('朝礼サマリーから正しい応答がありません。GASに PcApi.gs を追加して「新しいバージョン」でデプロイしたか確認してください。'); }
+  if(!j.ok) throw new Error(j.error==='unauthorized'?'連携キーが一致しません（PC_API_TOKEN）。':(j.error||'エラーが発生しました。'));
+  return j;
+}
+async function refreshChoreiCfg(showErr){
+  try{ settings.choreiCfg=await gasCall('config'); saveSettings(); }
+  catch(e){ if(showErr) toast(e.message); }
+  applyIdleMode();
+}
+function applyIdleMode(){
+  const chorei=settings.sumMode==='chorei';
+  $('#title').style.display=chorei?'none':'';
+  $('#choreiFields').style.display=chorei?'':'none';
+  if(!chorei) return;
+  const c=settings.choreiCfg||{sites:[],channels:[],lockedChannel:null};
+  const site=$('#cSite'), sites=c.sites||[];
+  const want=settings.cSite||c.defaultSite||sites[0]||'';
+  site.innerHTML='<option value="">事業所（未指定）</option>'+sites.map(x=>'<option'+(x===want?' selected':'')+'>'+esc(x)+'</option>').join('');
+  $('#cType').value=settings.cType||'朝礼';
+  const ch=$('#cChannel'), list=(c.channels||[]).filter(x=>x.configured);
+  if(c.lockedChannel==null && list.length>1){
+    ch.style.display=''; ch.innerHTML=list.map(x=>'<option value="'+x.id+'"'+(x.id==settings.cChannel?' selected':'')+'>投稿先: '+esc(x.name)+'</option>').join('');
+  }else{ ch.style.display='none'; if(list.length===1) settings.cChannel=list[0].id; }
+}
+$('#cSite').onchange=()=>{ settings.cSite=$('#cSite').value; saveSettings(); };
+$('#cType').oninput=()=>{ settings.cType=$('#cType').value.trim()||'朝礼'; saveSettings(); };
+$('#cChannel').onchange=()=>{ settings.cChannel=Number($('#cChannel').value); saveSettings(); };
+// 画面で編集した要約テキスト（buildPlainText_ の形式）を、朝礼サマリーの data 形式に戻す
+function parseChoreiText(text,orig){
+  const d={headline:'',sections:[],decisions:[],todos:[],followups:[],meta:(orig&&orig.meta)||{}};
+  const lines=text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+  let i=0, cur=null, list=null;
+  if(lines[0]&&!/^[【・•\-]/.test(lines[0])&&/サマリー/.test(lines[0])) i=1;
+  const head=[];
+  for(;i<lines.length&&!/^【.+】$/.test(lines[i]);i++) head.push(lines[i].replace(/^[・•\-]\s*/,''));
+  d.headline=head.join(' ');
+  for(;i<lines.length;i++){
+    const l=lines[i], m=l.match(/^【(.+)】$/);
+    if(m){
+      const h=m[1];
+      if(h==='決定事項'){ cur='decisions'; list=d.decisions; }
+      else if(/^todo$/i.test(h)){ cur='todos'; list=d.todos; }
+      else if(h==='要確認'){ cur='followups'; list=d.followups; }
+      else { cur='sec'; const sec={heading:h,items:[]}; d.sections.push(sec); list=sec.items; }
+      continue;
+    }
+    if(!list) continue;
+    const bullet=/^[・•\-]/.test(l); const body=l.replace(/^[・•\-]\s*/,'');
+    if(cur==='todos'){
+      if(!bullet&&list.length){ list[list.length-1].task+=' '+body; continue; }
+      let t=body, owner='', due='';
+      t=t.replace(/[（(]\s*担当[:：]\s*([^)）]*)[)）]/,(_,x)=>{owner=x.trim();return '';});
+      t=t.replace(/[（(]\s*期限[:：]\s*([^)）]*)[)）]/,(_,x)=>{due=x.trim();return '';});
+      list.push({task:t.trim(),owner,due});
+    }else{
+      if(!bullet&&list.length) list[list.length-1]+=' '+body; else list.push(body);
+    }
+  }
+  return d;
+}
+
+/* ========== 画面 ========== */
+let view='idle', prevScreen='idle';
+function go(name){
+  if(name==='back') name=prevScreen;
+  else if(name==='hist'||name==='set'){ if(view!=='hist'&&view!=='set') prevScreen=view; }
+  if((name==='hist'||name==='set') && view==='rec'){ toast('録音中は開けません'); return; }
+  view=name;
+  document.querySelectorAll('.scr').forEach(s=>s.classList.toggle('on',s.id==='s-'+name));
+  if(name==='set') fillSettings();
+  if(name==='hist') renderHistory();
+}
+const onGo=e=>{ const g=e.target.closest('[data-go]'); if(g) go(g.dataset.go); };
+document.addEventListener('click',onGo);
+function showMsg(sel,type,text){const m=$(sel);m.className='msg '+type;m.textContent=text;}
+function hideMsg(sel){$(sel).className='msg';}
+function toast(t){const el=$('#toast');el.textContent=t;el.classList.add('on');clearTimeout(toast._t);toast._t=setTimeout(()=>el.classList.remove('on'),1800);}
+const baseTitle=document.title;
+function setTitle(t){ document.title=t?t+' - '+baseTitle:baseTitle; }
+
+/* ========== 小窓表示 ========== */
+const isPopup = window.name==='recSummaryPopup' || matchMedia('(display-mode: standalone)').matches || window.outerWidth<=520;
+if(!isPopup) $('#popBanner').style.display='flex';
+$('#popBtn').onclick=()=>{
+  const w=window.open(location.href,'recSummaryPopup','popup,width=400,height=680,left='+(screen.availWidth-420)+',top=40');
+  if(w){ $('#popBanner').innerHTML='<span class="grow">小窓で開きました。このタブは閉じて構いません。</span>'; }
+  else toast('ポップアップがブロックされました。アドレスバー右端から許可してください。');
+};
+// Document Picture-in-Picture（Chrome/Edge 116以降）: 常に最前面の小窓
+if('documentPictureInPicture' in window){ $('#pipBtn').style.display=''; }
+$('#pipBtn').onclick=async()=>{
+  if(pipWin){ pipWin.close(); return; }
+  try{
+    pipWin=await documentPictureInPicture.requestWindow({width:380,height:600});
+    const st=pipWin.document.createElement('style'); st.textContent=$('#appStyle').textContent; pipWin.document.head.appendChild(st);
+    pipWin.document.title=document.title;
+    const tst=$('#toast');
+    pipWin.document.body.append($('#app'),tst);
+    pipWin.document.addEventListener('click',onGo);
+    $('#pipBtn').textContent='元に戻す';
+    pipWin.addEventListener('pagehide',()=>{ document.body.append($('#app',pipWin.document)||pipWin.document.querySelector('#app'), pipWin.document.querySelector('#toast')); $('#pipBtn').textContent='最前面'; pipWin=null; });
+  }catch(e){ toast('最前面表示にできませんでした: '+e.message); }
+};
+
+/* ========== IndexedDB ========== */
+let dbp;
+function db(){
+  if(!dbp) dbp=new Promise((res,rej)=>{
+    const r=indexedDB.open('recSummary',1);
+    r.onupgradeneeded=()=>{ const d=r.result; d.createObjectStore('records',{keyPath:'id'}); d.createObjectStore('chunks',{keyPath:['sid','seq']}); };
+    r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error);
+  });
+  return dbp;
+}
+async function tx(store,mode,fn){ const d=await db(); return new Promise((res,rej)=>{ const t=d.transaction(store,mode); const q=fn(t.objectStore(store)); t.oncomplete=()=>res(q&&q.result); t.onerror=()=>rej(t.error); }); }
+const recPut=r=>tx('records','readwrite',s=>s.put(r));
+const recGet=id=>tx('records','readonly',s=>s.get(id));
+const recDel=id=>tx('records','readwrite',s=>s.delete(id));
+const recAll=()=>tx('records','readonly',s=>s.getAll());
+const chunkPut=c=>tx('chunks','readwrite',s=>s.put(c));
+const chunkAll=()=>tx('chunks','readonly',s=>s.getAll());
+async function chunkClear(sid){ const d=await db(); return new Promise((res,rej)=>{ const t=d.transaction('chunks','readwrite'); t.objectStore('chunks').delete(IDBKeyRange.bound([sid,0],[sid,Infinity])); t.oncomplete=res; t.onerror=()=>rej(t.error); }); }
+
+/* ========== 録音 ========== */
+let mr=null, stream=null, sid=null, seq=0, chunks=[], recMs=0, recFrom=0, tickT=null, ac=null, raf=null, wakeLock=null;
+let audio=null; // {file, duration, title, source}
+async function listMics(){
+  try{
+    const devs=(await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==='audioinput');
+    const sel=$('#mic'); sel.innerHTML='<option value="">既定のマイク</option>'+devs.filter(d=>d.deviceId&&d.deviceId!=='default').map(d=>'<option value="'+esc(d.deviceId)+'">'+esc(d.label||'マイク')+'</option>').join('');
+    sel.value=[...sel.options].some(o=>o.value===settings.mic)?settings.mic:'';
+  }catch(e){}
+}
+$('#mic').onchange=()=>{ settings.mic=$('#mic').value; saveSettings(); };
+async function lockWake(){ try{ if('wakeLock' in navigator){ wakeLock=await navigator.wakeLock.request('screen'); } }catch(e){} }
+function unlockWake(){ try{ wakeLock&&wakeLock.release(); }catch(e){} wakeLock=null; }
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible' && (view==='rec'||view==='proc') && !wakeLock) lockWake(); });
+
+$('#recBtn').onclick=async()=>{
+  hideMsg('#idleMsg');
+  try{
+    stream=await navigator.mediaDevices.getUserMedia({audio:{deviceId:settings.mic?{exact:settings.mic}:undefined,channelCount:1,echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
+  }catch(e){ showMsg('#idleMsg','err','マイクを使えません。ブラウザのマイク許可とWindowsの「設定 > プライバシー > マイク」を確認してください。\n'+e.message); return; }
+  listMics();
+  const type=['audio/webm;codecs=opus','audio/webm','audio/ogg;codecs=opus'].find(t=>MediaRecorder.isTypeSupported(t))||'';
+  mr=new MediaRecorder(stream,type?{mimeType:type,audioBitsPerSecond:32000}:{});
+  sid='s'+Date.now(); seq=0; chunks=[]; recMs=0; recFrom=Date.now();
+  const startedAt=Date.now(), title=$('#title').value.trim();
+  mr.ondataavailable=e=>{ if(!e.data.size) return; chunks.push(e.data); chunkPut({sid,seq:seq++,blob:e.data,startedAt,title,ms:curMs(),type:mr.mimeType||'audio/webm'}).catch(()=>{}); };
+  mr.onstop=async()=>{
+    stopMeter(); stream.getTracks().forEach(t=>t.stop()); clearInterval(tickT); unlockWake();
+    const blob=new Blob(chunks,{type:(mr.mimeType||'audio/webm').split(';')[0]});
+    const d=new Date(startedAt);
+    const name='録音_'+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'_'+pad(d.getHours())+pad(d.getMinutes())+'.webm';
+    setAudio(new File([blob],name,{type:blob.type,lastModified:startedAt}), recMs/1000, title, 'rec', sid);
+    setTitle('');
+  };
+  mr.start(5000);
+  startMeter(stream); lockWake();
+  $('#recStatus').className='status'; $('#recLabel').textContent='録音中'; $('#pauseBtn').textContent='一時停止';
+  tickT=setInterval(()=>{ const t=fmtDur(curMs()/1000); $('#recTime').textContent=t; setTitle(mr.state==='paused'?'一時停止 '+t:'録音中 '+t); },500);
+  $('#recTime').textContent='0:00';
+  go('rec');
+};
+function curMs(){ return recMs+(mr&&mr.state==='recording'?Date.now()-recFrom:0); }
+$('#pauseBtn').onclick=()=>{
+  if(!mr) return;
+  if(mr.state==='recording'){ recMs+=Date.now()-recFrom; mr.pause(); $('#recStatus').className='status paused'; $('#recLabel').textContent='一時停止中'; $('#pauseBtn').textContent='再開'; }
+  else if(mr.state==='paused'){ recFrom=Date.now(); mr.resume(); $('#recStatus').className='status'; $('#recLabel').textContent='録音中'; $('#pauseBtn').textContent='一時停止'; }
+};
+$('#stopBtn').onclick=()=>{ if(!mr) return; if(mr.state==='recording') recMs+=Date.now()-recFrom; mr.stop(); };
+function startMeter(st){
+  try{
+    ac=new (window.AudioContext||window.webkitAudioContext)(); const src=ac.createMediaStreamSource(st); const an=ac.createAnalyser(); an.fftSize=512; src.connect(an);
+    const buf=new Uint8Array(an.fftSize);
+    const loop=()=>{ an.getByteTimeDomainData(buf); let m=0; for(const v of buf){ const a=Math.abs(v-128); if(a>m) m=a; } $('#meter').style.width=Math.min(100,m/128*160)+'%'; raf=requestAnimationFrame(loop); };
+    loop();
+    // バックグラウンドでは描画が止まるため、表示に戻ったとき再開
+  }catch(e){}
+}
+function stopMeter(){ cancelAnimationFrame(raf); try{ac&&ac.close();}catch(e){} ac=null; }
+
+/* ---- 録音済みファイル ---- */
+const drop=$('#drop');
+drop.onclick=()=>$('#fileIn').click();
+$('#fileIn').onchange=e=>{ const f=e.target.files[0]; e.target.value=''; if(f) useFile(f); };
+['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('over');}));
+['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('over');}));
+drop.addEventListener('drop',e=>{ const f=e.dataTransfer.files[0]; if(f) useFile(f); });
+window.addEventListener('dragover',e=>e.preventDefault()); window.addEventListener('drop',e=>e.preventDefault());
+async function useFile(f){
+  if(!/^audio\//.test(f.type)&&!/\.(m4a|mp3|wav|webm|aac|ogg|oga|opus|flac|aiff?|mp4)$/i.test(f.name)){ showMsg('#idleMsg','err','音声ファイルではないようです: '+f.name); return; }
+  const dur=await new Promise(res=>{ const a=document.createElement('audio'); const u=URL.createObjectURL(f); const done=v=>{URL.revokeObjectURL(u);res(v);}; a.preload='metadata'; a.onloadedmetadata=()=>done(isFinite(a.duration)?a.duration:0); a.onerror=()=>done(0); setTimeout(()=>done(0),4000); a.src=u; });
+  setAudio(f,dur,$('#title').value.trim(),'file',null);
+}
+function setAudio(file,duration,title,source,sessionId){
+  audio={file,duration,title,source,sid:sessionId};
+  $('#doneName').textContent=title||file.name; $('#doneMeta').textContent=(duration?fmtDur(duration)+' / ':'')+fmtSize(file.size);
+  const p=$('#player'); if(p.src) URL.revokeObjectURL(p.src); p.src=URL.createObjectURL(file);
+  hideMsg('#doneMsg'); go('done');
+}
+$('#saveAudioBtn').onclick=()=>{ if(audio) downloadBlob(audio.file,audio.file.name); };
+$('#discardBtn').onclick=async()=>{
+  if(audio&&audio.source==='rec'&&!W().confirm('録音を破棄しますか？（元に戻せません）')) return;
+  if(audio&&audio.sid) await chunkClear(audio.sid);
+  audio=null; mr=null; go('idle');
+};
+
+/* ---- 復元 ---- */
+async function checkRecover(){
+  let all=[]; try{ all=await chunkAll(); }catch(e){ return; }
+  if(!all.length) return;
+  const by={}; all.forEach(c=>{ (by[c.sid]=by[c.sid]||[]).push(c); });
+  const sids=Object.keys(by).sort(); const s=sids[sids.length-1]; const cs=by[s].sort((a,b)=>a.seq-b.seq);
+  const last=cs[cs.length-1];
+  $('#recoverText').textContent='前回の録音（'+fmtDate(last.startedAt)+'、約'+fmtDur(last.ms/1000)+'）が残っています';
+  $('#recoverBanner').style.display='flex';
+  $('#recoverYes').onclick=()=>{
+    const type=(last.type||'audio/webm').split(';')[0];
+    const d=new Date(last.startedAt);
+    const f=new File(cs.map(c=>c.blob),'録音_'+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'_'+pad(d.getHours())+pad(d.getMinutes())+'_復元.webm',{type,lastModified:last.startedAt});
+    $('#recoverBanner').style.display='none';
+    setAudio(f,last.ms/1000,last.title||'','rec',s);
+    // 古い残骸は削除
+    sids.filter(x=>x!==s).forEach(x=>chunkClear(x));
+  };
+  $('#recoverNo').onclick=async()=>{ if(!W().confirm('残っている録音を破棄しますか？')) return; for(const x of sids) await chunkClear(x); $('#recoverBanner').style.display='none'; };
+}
+
+/* ========== Gemini ========== */
+async function apiError(res){
+  let t=''; try{const j=await res.json(); t=j.error?.message||JSON.stringify(j);}catch(e){t=res.statusText;}
+  const hint={400:'リクエストかモデル名に問題があります。',401:'APIキーが無効です。',403:'APIキーの権限がないか無効です。',404:'モデル名が見つかりません。',429:'利用上限に達しました。少し待って再実行してください。',500:'Google側のエラーです。',503:'Google側が混雑しています。'}[res.status]||'';
+  const e=new Error('Gemini API エラー ('+res.status+') '+hint+'\n'+t); e.status=res.status; return e;
+}
+async function generate(key,model,contents,cfg){
+  if(!key) throw new Error('APIキーが未設定です。「設定」で入力してください。');
+  let res,tries=0;
+  while(true){
+    res=await fetch(BASE+'/v1beta/models/'+encodeURIComponent(model)+':generateContent',{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':key},body:JSON.stringify({contents,generationConfig:cfg||{}})});
+    if((res.status===500||res.status===503)&&tries<2){ tries++; await new Promise(r=>setTimeout(r,4000*tries)); continue; }
+    break;
+  }
+  if(!res.ok) throw await apiError(res);
+  const j=await res.json(); const c=j.candidates?.[0];
+  if(!c) throw new Error('応答が空でした。'+(j.promptFeedback?.blockReason?'（'+j.promptFeedback.blockReason+'）':''));
+  return {text:(c.content?.parts||[]).filter(p=>p.text&&!p.thought).map(p=>p.text).join(''),finish:c.finishReason,usage:j.usageMetadata||{}};
+}
+async function uploadFile(key,file,mime){
+  const st=await fetch(BASE+'/upload/v1beta/files',{method:'POST',headers:{'x-goog-api-key':key,'X-Goog-Upload-Protocol':'resumable','X-Goog-Upload-Command':'start','X-Goog-Upload-Header-Content-Length':String(file.size),'X-Goog-Upload-Header-Content-Type':mime,'Content-Type':'application/json'},body:JSON.stringify({file:{display_name:file.name.slice(0,100)}})});
+  if(!st.ok) throw await apiError(st);
+  const url=st.headers.get('x-goog-upload-url'); if(!url) throw new Error('アップロードURLを取得できませんでした。');
+  const up=await fetch(url,{method:'POST',headers:{'X-Goog-Upload-Offset':'0','X-Goog-Upload-Command':'upload, finalize'},body:file});
+  if(!up.ok) throw await apiError(up);
+  let f=(await up.json()).file;
+  for(let i=0;f.state==='PROCESSING'&&i<90;i++){ await new Promise(r=>setTimeout(r,2000)); const g=await fetch(BASE+'/v1beta/'+f.name,{headers:{'x-goog-api-key':key}}); if(!g.ok) throw await apiError(g); f=await g.json(); }
+  if(f.state==='FAILED') throw new Error('Google側で音声の処理に失敗しました。');
+  return f;
+}
+async function deleteFile(key,name){ try{ await fetch(BASE+'/v1beta/'+name,{method:'DELETE',headers:{'x-goog-api-key':key}}); }catch(e){} }
+const toB64=f=>new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(String(r.result).split(',')[1]);r.onerror=()=>rej(r.error);r.readAsDataURL(f);});
+function mimeOf(file){
+  const ext=(file.name.split('.').pop()||'').toLowerCase();
+  const map={m4a:'audio/m4a',mp4:'audio/m4a',mp3:'audio/mp3',wav:'audio/wav',webm:'audio/webm',aac:'audio/aac',ogg:'audio/ogg',oga:'audio/ogg',opus:'audio/ogg',flac:'audio/flac',aiff:'audio/aiff',aif:'audio/aiff'};
+  if(map[ext]) return map[ext];
+  const t=(file.type||'').split(';')[0]; if(t==='audio/x-m4a'||t==='audio/mp4') return 'audio/m4a'; if(t==='audio/mpeg') return 'audio/mp3';
+  return t||'audio/webm';
+}
+
+/* ---- プロンプト ---- */
+function trPrompt(){
+  const g=glossList();
+  return ['この音声は職場の会議・朝礼の録音です。日本語で正確に文字起こししてください。','','# ルール',
+    '- 要約や省略はせず、話された内容をすべて書き起こす',
+    '- 話者が替わるたび、または30秒程度ごとに改行し、行頭を「[mm:ss] 話者名: 」の形式にする（1時間を超えたら [h:mm:ss]）',
+    '- 話者名が会話から分かる場合はその名前、分からなければ「話者A」「話者B」のように区別する',
+    '- 「えー」「あのー」などのフィラーや言い直しは除き、読みやすくする。意味は変えない',
+    '- 聞き取れない箇所は（聞き取れず）と書く。推測で補わない',
+    '- 数字・時刻・人数・数量は算用数字で書く',
+    g.length?'- 次の業務用語は、この表記を優先して使う: '+g.join('、'):'',
+    '- 会話がない区間は書かない',
+    '- 出力は文字起こし本文のみ。前置き・説明・コードブロックは付けない'].filter(Boolean).join('\n');
+}
+const CONT='出力が途中で切れました。直前の出力の続きから、同じ形式で文字起こしを続けてください。すでに出力した部分は繰り返さず、前置きも付けないでください。';
+const DETAIL={short:'各項目は15〜30字程度に短く。概要は最大3項目。',normal:'各項目は1文で簡潔に。概要は3〜6項目。',long:'背景や理由も含めて具体的に。概要は5〜10項目。'};
+function smPrompt(tr,title){
+  const g=glossList();
+  return ['あなたは物流倉庫の現場管理者向けに議事録を作るアシスタントです。以下の会議・朝礼の文字起こしから要約を作成してください。','','# 方針',
+    '- '+DETAIL[settings.detail||'short'],
+    '- 決定事項は「決まったこと」だけ。検討中の内容は課題・確認事項に入れる',
+    '- ToDoは誰が何をいつまでに行うか。担当・期限が発言にない場合は空文字（推測で埋めない）',
+    '- 数字（人数・時間・件数・目標値など）は正確に残す',
+    '- 文字起こしの誤変換と思われる語は文脈から直す',
+    g.length?'- 業務用語の表記: '+g.join('、'):'',
+    title?'- 会議名は「'+title+'」とする':'- 会議名は内容から20字以内で付ける',
+    '- 該当する内容がない項目は空の配列にする','',
+    '# 出力（JSONのみ）',
+    '{"title":"会議名","headline":"全体を1〜2文で","overview":["要点"],"decisions":["決定事項"],"todos":[{"task":"内容","owner":"担当","due":"期限"}],"issues":["課題・確認事項"],"announcements":["連絡・周知事項"]}',
+    '','# 文字起こし',tr].filter(x=>x!=='').join('\n');
+}
+const SCHEMA={type:'OBJECT',properties:{title:{type:'STRING'},headline:{type:'STRING'},overview:{type:'ARRAY',items:{type:'STRING'}},decisions:{type:'ARRAY',items:{type:'STRING'}},
+  todos:{type:'ARRAY',items:{type:'OBJECT',properties:{task:{type:'STRING'},owner:{type:'STRING'},due:{type:'STRING'}},required:['task','owner','due']}},
+  issues:{type:'ARRAY',items:{type:'STRING'}},announcements:{type:'ARRAY',items:{type:'STRING'}}},required:['title','headline','overview','decisions','todos','issues','announcements']};
+function parseJSON(t){ t=t.trim().replace(/^```(?:json)?\s*/i,'').replace(/```\s*$/,''); try{return JSON.parse(t);}catch(e){} const a=t.indexOf('{'),b=t.lastIndexOf('}'); if(a>=0&&b>a) return JSON.parse(t.slice(a,b+1)); throw new Error('要約の形式を読み取れませんでした。'); }
+function summaryText(s,rec){
+  const L=['【'+(s.title||rec.title||'会議')+'】'+ymd(rec.recordedAt)];
+  if(s.headline) L.push(s.headline);
+  const blk=(h,a)=>{ if(a&&a.length){ L.push(''); L.push('■'+h); a.forEach(x=>L.push('・'+x)); } };
+  blk('概要',s.overview); blk('決定事項',s.decisions);
+  if(s.todos&&s.todos.length){ L.push(''); L.push('■ToDo'); s.todos.forEach(t=>{ const x=[t.owner&&'担当：'+t.owner,t.due&&'期限：'+t.due].filter(Boolean).join('／'); L.push('・'+t.task+(x?'（'+x+'）':'')); }); }
+  blk('課題・確認事項',s.issues); blk('連絡・周知事項',s.announcements);
+  return L.join('\n');
+}
+
+/* ========== 要約処理 ========== */
+let busy=false;
+function step(s,st){ const li=$('#steps').querySelector('li[data-s="'+s+'"]'); if(li) li.className=st||''; }
+$('#sumBtn').onclick=()=>runPipeline();
+$('#retryBtn').onclick=()=>runPipeline();
+$('#backDoneBtn').onclick=()=>go('done');
+async function runPipeline(){
+  settings=loadSettings();
+  if(!audio) return;
+  if(!settings.apiKey){ showMsg('#doneMsg','err','APIキーが未設定です。「設定」で入力してください。'); return; }
+  busy=true; go('proc'); hideMsg('#procMsg'); $('#procActs').style.display='none';
+  ['up','tr','sm'].forEach(s=>step(s,''));
+  $('#steps').querySelector('li[data-s="sm"]').textContent=settings.sumMode==='chorei'?'要約（朝礼サマリー）':'要約';
+  const key=settings.apiKey, file=audio.file, mime=mimeOf(file), t0=Date.now();
+  const tk=setInterval(()=>{ const t=fmtDur((Date.now()-t0)/1000); $('#procTime').textContent='経過 '+t; setTitle('処理中 '+t); },1000);
+  lockWake();
+  let cur='up', uploaded=null;
+  try{
+    step('up','run');
+    let part;
+    if(file.size<=INLINE_MAX){
+      try{ uploaded=await uploadFile(key,file,mime); part={fileData:{fileUri:uploaded.uri,mimeType:mime}}; }
+      catch(e){ if(e.status&&e.status<500) throw e; part={inlineData:{mimeType:mime,data:await toB64(file)}}; }
+    }else{ uploaded=await uploadFile(key,file,mime); part={fileData:{fileUri:uploaded.uri,mimeType:mime}}; }
+    step('up','done');
+
+    cur='tr'; step('tr','run');
+    const first={role:'user',parts:[{text:trPrompt()},part]};
+    let tr='', usage={in:0,out:0}, truncated=false;
+    for(let i=0;i<=MAX_CONT;i++){
+      const contents=i===0?[first]:[first,{role:'model',parts:[{text:tr}]},{role:'user',parts:[{text:CONT}]}];
+      const r=await generate(key,settings.model,contents,{temperature:0,maxOutputTokens:65536});
+      usage.in+=r.usage.promptTokenCount||0; usage.out+=(r.usage.candidatesTokenCount||0)+(r.usage.thoughtsTokenCount||0);
+      let p=r.text; if(i>0&&tr&&!tr.endsWith('\n')&&/^\s*\[/.test(p)) p='\n'+p.replace(/^\s+/,'');
+      tr+=p; truncated=r.finish==='MAX_TOKENS'; if(!truncated) break;
+    }
+    tr=tr.replace(/^```\w*\n?|```\s*$/g,'').trim();
+    if(!tr) throw new Error('文字起こし結果が空でした。音声に会話が入っているか確認してください。');
+    step('tr','done');
+
+    cur='sm'; step('sm','run');
+    let rec;
+    if(settings.sumMode==='chorei'){
+      let text=tr; if(text.length>58000) text=text.replace(/^\s*\[[\d:]+\]\s*/gm,'');
+      const rd=new Date(file.lastModified||Date.now());
+      const date=rd.getFullYear()+'/'+pad(rd.getMonth()+1)+'/'+pad(rd.getDate());
+      const site=$('#cSite').value, type=$('#cType').value.trim()||'朝礼';
+      const j=await gasCall('summarize',{text,site,date,meetingType:type,note:'PCで録音した音声をGeminiで文字起こし（話者名・時刻付き）'});
+      step('sm','done');
+      rec={id:'r'+Date.now(),createdAt:Date.now(),recordedAt:file.lastModified||Date.now(),mode:'chorei',title:type+'サマリー '+(site||'')+' '+date,duration:audio.duration,
+        fileName:file.name,transcript:tr,data:j.data,text:j.text,truncated,usage,sec:Math.round((Date.now()-t0)/1000),audio:settings.saveAudio?file:null,slackAt:null,
+        quota:j.dailyLimit?('本日 '+j.usedToday+'/'+j.dailyLimit+'回'):''};
+    }else{
+    const parts=[{text:smPrompt(tr,audio.title)}];
+    let r;
+    try{ r=await generate(key,settings.model,[{role:'user',parts}],{responseMimeType:'application/json',responseSchema:SCHEMA,temperature:0.2,maxOutputTokens:16384}); }
+    catch(e){ if(e.status!==400) throw e; r=await generate(key,settings.model,[{role:'user',parts}],{responseMimeType:'application/json',temperature:0.2,maxOutputTokens:16384}); }
+    usage.in+=r.usage.promptTokenCount||0; usage.out+=(r.usage.candidatesTokenCount||0)+(r.usage.thoughtsTokenCount||0);
+    const s=parseJSON(r.text); ['overview','decisions','todos','issues','announcements'].forEach(k=>{ if(!Array.isArray(s[k])) s[k]=[]; });
+    step('sm','done');
+
+    rec={id:'r'+Date.now(),createdAt:Date.now(),recordedAt:file.lastModified||Date.now(),mode:'gemini',title:s.title||audio.title||file.name,duration:audio.duration,
+      fileName:file.name,transcript:tr,summary:s,text:'',truncated,usage,sec:Math.round((Date.now()-t0)/1000),audio:settings.saveAudio?file:null,slackAt:null};
+    rec.text=summaryText(s,rec);
+    }
+    await recPut(rec);
+    if(audio.sid) await chunkClear(audio.sid);
+    showResult(rec);
+    notifyDone(rec);
+  }catch(e){
+    step(cur,'fail');
+    showMsg('#procMsg','err', e instanceof TypeError ? '通信に失敗しました。ネットワークを確認してください。\n（ファイルを直接開いていると失敗することがあります。GitHub Pagesなど https で開いてください）\n'+e.message : e.message);
+    $('#procActs').style.display='grid'; setTitle('エラー');
+  }finally{
+    clearInterval(tk); busy=false; unlockWake();
+    if(uploaded&&settings.del) deleteFile(key,uploaded.name);
+  }
+}
+function notifyDone(rec){
+  setTitle('要約完了');
+  if(settings.notify && 'Notification' in window && Notification.permission==='granted' && document.visibilityState!=='visible'){
+    try{ const n=new Notification('要約が完了しました',{body:rec.title}); n.onclick=()=>{ window.focus(); n.close(); }; }catch(e){}
+  }
+}
+
+/* ========== 結果 ========== */
+let current=null;
+function showResult(rec){
+  current=rec;
+  $('#outSum').value=rec.text; $('#outTr').value=rec.transcript;
+  $('#resMeta').textContent=(rec.duration?fmtDur(rec.duration)+' / ':'')+fmtDate(rec.recordedAt)+(rec.slackAt?' / Slack送信済み':'')+(rec.truncated?' / 文字起こしが途中で切れた可能性あり':'');
+  $('#resMeta').textContent+=(rec.quota?' / '+rec.quota:'');
+  $('#slackBtn').style.display=(rec.mode==='chorei'||settings.slackMode!=='none')?'':'none';
+  resTab('sum'); go('result');
+}
+function resTab(t){ $('#s-result').querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t===t)); $('#outSum').style.display=t==='sum'?'':'none'; $('#outTr').style.display=t==='tr'?'':'none'; }
+$('#s-result').querySelector('.tabs').onclick=e=>{ const b=e.target.closest('button'); if(b) resTab(b.dataset.t); };
+let saveT=null;
+['#outSum','#outTr'].forEach(sel=>$(sel).addEventListener('input',()=>{ clearTimeout(saveT); saveT=setTimeout(async()=>{ if(!current) return; current.text=$('#outSum').value; current.transcript=$('#outTr').value; await recPut(current); },700); }));
+$('#copyBtn').onclick=()=>{ const tab=$('#outTr').style.display===''?'#outTr':'#outSum'; copy($(tab).value, tab==='#outTr'?'文字起こしをコピーしました':'要約をコピーしました'); };
+$('#newBtn').onclick=()=>{ audio=null; mr=null; $('#title').value=''; setTitle(''); go('idle'); };
+$('#slackBtn').onclick=async()=>{
+  if(!current) return;
+  settings=loadSettings();
+  if(current.slackAt && !W().confirm('この要約は '+fmtDate(current.slackAt)+' に送信済みです。もう一度送りますか？')) return;
+  const b=$('#slackBtn'); b.disabled=true; b.textContent='送信中...';
+  try{
+    let msg;
+    if(current.mode==='chorei'){
+      const data=parseChoreiText($('#outSum').value,current.data);
+      if(!data.headline&&!data.sections.some(x=>x.items.length)&&!data.decisions.length&&!data.todos.length) throw new Error('要約の内容を読み取れませんでした。【見出し】と「・項目」の形を残して編集してください。');
+      const j=await gasCall('post',{channelId:settings.cChannel,data,transcript:$('#outTr').value});
+      current.data=data; msg='Slackに送信しました'+(j.channel?'（'+j.channel+'）':'');
+    }else{
+      await slackSend(settings,$('#outSum').value, settings.sendTr?$('#outTr').value:'');
+      msg=settings.slackMode==='webhook'?'送信しました（Slackで確認してください）':'Slackに送信しました';
+    }
+    current.slackAt=Date.now(); await recPut(current);
+    toast(msg);
+    $('#resMeta').textContent=$('#resMeta').textContent.replace(' / Slack送信済み','')+' / Slack送信済み';
+  }catch(e){ W().alert('Slackに送信できませんでした。\n'+e.message); }
+  finally{ b.disabled=false; b.textContent='Slackに送信'; }
+};
+function splitText(t,n){ const out=[]; let buf=''; for(let line of t.split('\n')){ while(line.length>n){ if(buf){out.push(buf);buf='';} out.push(line.slice(0,n)); line=line.slice(n); } if(buf&&buf.length+line.length+1>n){ out.push(buf); buf=''; } buf+=(buf?'\n':'')+line; } if(buf) out.push(buf); return out; }
+async function slackSend(s,text,transcript){
+  if(s.slackMode==='gas'){
+    if(!s.gasUrl) throw new Error('GAS WebアプリのURLが未設定です。');
+    const res=await fetch(s.gasUrl,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({token:s.gasToken,text,transcript:transcript||''})});
+    let j; try{ j=await res.json(); }catch(e){ throw new Error('GASから正しい応答がありません。URLと「アクセスできるユーザー：全員」の設定を確認してください。'); }
+    if(!j.ok) throw new Error(j.error==='unauthorized'?'合言葉が一致しません。':(j.error||'送信に失敗しました。'));
+    return;
+  }
+  if(s.slackMode==='webhook'){
+    if(!/^https:\/\/hooks\.slack\.com\//.test(s.hook)) throw new Error('Incoming Webhook URL が正しくありません。');
+    const posts=[text].concat(transcript?splitText('【文字起こし全文】\n'+transcript,SLACK_CHUNK):[]);
+    for(const p of posts){ await fetch(s.hook,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({payload:JSON.stringify({text:p})})}); await new Promise(r=>setTimeout(r,1100)); }
+    return;
+  }
+  throw new Error('Slack送信は「使わない」に設定されています。');
+}
+function downloadBlob(blob,name){ const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1000); }
+async function copy(text,done){ try{ await navigator.clipboard.writeText(text); }catch(e){ const t=document.createElement('textarea'); t.value=text; document.body.appendChild(t); t.select(); document.execCommand('copy'); t.remove(); } toast(done); }
+
+/* ========== 履歴 ========== */
+async function renderHistory(){
+  let rs=[]; try{ rs=await recAll(); }catch(e){}
+  const q=$('#hq').value.trim().toLowerCase();
+  rs.sort((a,b)=>b.createdAt-a.createdAt);
+  if(q) rs=rs.filter(r=>(r.title+' '+r.text+' '+r.transcript).toLowerCase().includes(q));
+  $('#hList').innerHTML=rs.length?rs.map(r=>'<div class="hitem" data-id="'+r.id+'"><div class="tt">'+esc(r.title)+'</div><div class="mm">'+fmtDate(r.recordedAt)+(r.duration?' / '+fmtDur(r.duration):'')+(r.slackAt?' / Slack送信済み':'')+'</div><div class="row" style="margin-top:4px"><span class="grow"></span>'+(r.audio?'<button class="btn sm" data-act="audio">音声</button>':'')+'<button class="btn sm" data-act="del" style="color:var(--err)">削除</button></div></div>').join(''):'<div class="small center" style="padding:30px 0">'+(q?'該当なし':'まだ履歴がありません')+'</div>';
+}
+$('#hq').oninput=()=>renderHistory();
+$('#hList').onclick=async e=>{
+  const it=e.target.closest('.hitem'); if(!it) return; const r=await recGet(it.dataset.id); if(!r) return;
+  const act=e.target.dataset.act;
+  if(act==='del'){ if(W().confirm('「'+r.title+'」を削除しますか？')){ await recDel(r.id); renderHistory(); } return; }
+  if(act==='audio'){ downloadBlob(r.audio,r.fileName||'audio.webm'); return; }
+  showResult(r);
+};
+
+/* ========== 終了時の警告・初期化 ========== */
+window.addEventListener('beforeunload',e=>{ if((mr&&mr.state!=='inactive')||busy){ e.preventDefault(); e.returnValue=''; } });
+listMics(); checkRecover(); applyIdleMode();
+if(settings.sumMode==='chorei'&&settings.choreiUrl) refreshChoreiCfg(false);
+if(!settings.apiKey){ go('set'); showMsg('#sMsg','warn','はじめに Gemini APIキーを入力して「保存」を押してください。'); }
+</script>
+</body>
+</html>
