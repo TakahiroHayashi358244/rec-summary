@@ -2,7 +2,12 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="録音要約">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="apple-touch-icon" href="icon-192.png">
 <title>録音要約</title>
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#2457d6">
@@ -16,8 +21,14 @@
 }
 *{box-sizing:border-box}
 html,body{height:100%}
+/* 画面サイズは iPhone（幅393×高さ852）を基準に統一 */
+:root{--phone-w:393px;--phone-h:852px}
 body{margin:0;background:var(--bg);color:var(--ink);font:13px/1.55 "Yu Gothic UI","Meiryo","Hiragino Sans",system-ui,sans-serif}
-#app{max-width:440px;margin:0 auto;min-height:100%;display:flex;flex-direction:column;background:var(--bg)}
+#app{width:100%;max-width:var(--phone-w);margin:0 auto;height:100%;min-height:0;display:flex;flex-direction:column;background:var(--bg);overflow:hidden;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}
+.body{overflow:auto}
+/* PCのブラウザで大きな画面に開いたときは、iPhoneと同じ大きさの枠で中央に表示 */
+@media (min-width:480px){ html{background:#dfe3ea} body{background:#dfe3ea;display:flex;align-items:center;justify-content:center;min-height:100%} #app{height:min(var(--phone-h),100%);border-radius:18px;box-shadow:0 8px 30px rgba(0,0,0,.18);border:1px solid #cfd5de} }
+@media (min-width:480px) and (max-height:880px){ #app{height:100%;border-radius:0} }
 .top{display:flex;align-items:center;gap:6px;padding:8px 10px;background:var(--card);border-bottom:1px solid var(--line)}
 .top h1{font-size:14px;margin:0;flex:1;font-weight:700}
 .body{flex:1;padding:12px;display:flex;flex-direction:column;gap:10px;min-height:0}
@@ -34,7 +45,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font:13px/1.55 "Yu Gothic UI
 .btn:disabled{opacity:.5;cursor:not-allowed}
 .row{display:flex;gap:8px;align-items:center}
 .row>.grow{flex:1;min-width:0}
-input[type=text],input[type=email],select,textarea{width:100%;font:inherit;padding:6px 9px;border:1px solid #cfd5de;border-radius:6px;background:#fff;color:var(--ink)}
+input[type=text],input[type=email],select,textarea{width:100%;font:inherit;font-size:16px;padding:6px 9px;border:1px solid #cfd5de;border-radius:6px;background:#fff;color:var(--ink)}
 textarea{resize:none}
 .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px}
 .center{text-align:center}
@@ -124,8 +135,10 @@ h2{font-size:14px;margin:4px 0 0}
       <div class="card">
         <div class="big-msg" id="waitText">申請を受け付けました。<br>管理者の許可後に「再読み込み」を押してください。</div>
         <div class="small" id="waitEmail" style="margin-top:6px"></div>
+        <div class="small" id="waitRow"></div>
+        <div class="small" id="waitPoll" style="margin-top:4px"></div>
       </div>
-      <button class="btn pri wide" id="reloadBtn">再読み込み</button>
+      <button class="btn pri wide" id="reloadBtn">今すぐ確認</button>
       <button class="btn sm" id="reRegBtn" style="align-self:flex-start">別のメールアドレスで申請し直す</button>
       <div class="msg" id="waitMsg"></div>
     </div>
@@ -144,7 +157,21 @@ h2{font-size:14px;margin:4px 0 0}
       <select id="mic" title="マイク"><option value="">既定のマイク</option></select>
       <div class="drop" id="drop">録音済みファイル（サウンド レコーダーなど）はここにドロップ／クリックで選択</div>
       <input type="file" id="fileIn" accept="audio/*,.m4a,.mp3,.wav,.webm,.aac,.ogg,.flac" hidden>
+      <button class="btn wide" id="pasteOpenBtn">文字起こしテキストを貼り付けて要約</button>
       <div class="msg" id="idleMsg"></div>
+    </div>
+
+    <!-- テキスト貼り付け -->
+    <div class="scr" id="s-paste">
+      <div class="row"><b class="grow">文字起こしテキスト</b><span class="small" id="pasteCount">0文字</span></div>
+      <textarea class="out" id="pasteText" spellcheck="false" placeholder="iPhoneのメモ・ボイスメモ・Teamsなどの文字起こしを、ここに貼り付けてください。"></textarea>
+      <div class="acts">
+        <button class="btn" id="pasteClipBtn">クリップボードから貼り付け</button>
+        <button class="btn" id="pasteClearBtn">クリア</button>
+      </div>
+      <button class="btn pri wide" id="pasteSumBtn">要約する</button>
+      <button class="btn sm" id="pasteBackBtn" style="align-self:flex-start">戻る</button>
+      <div class="msg" id="pasteMsg"></div>
     </div>
 
     <!-- 録音中 -->
@@ -220,8 +247,9 @@ h2{font-size:14px;margin:4px 0 0}
         <div class="small">利用者</div>
         <div id="setWho" style="font-weight:700"></div>
         <label class="chk"><input type="checkbox" id="sSaveAudio"> 履歴に音声も保存する（このPCの容量を使います）</label>
-        <label class="chk"><input type="checkbox" id="sNotify"> 要約が終わったらWindowsの通知を出す</label>
+        <label class="chk"><input type="checkbox" id="sNotify"> 要約が終わったら通知を出す（Windows・Android）</label>
         <label class="chk"><input type="checkbox" id="sDel" checked> 処理後、Google側の音声をすぐ削除する</label>
+        <label class="chk"><input type="checkbox" id="sAwake" checked> アプリを開いている間は画面を消さない（自動ロックを防ぐ）</label>
       </div>
       <div class="small">要約の方法・用語辞書・投稿先・APIキーは管理者が管理しています。</div>
       <div class="acts">
@@ -266,7 +294,7 @@ function deviceToken(){
   if(!t||!/^[0-9a-f]{32,64}$/.test(t)){ const a=new Uint8Array(24); crypto.getRandomValues(a); t=[...a].map(b=>b.toString(16).padStart(2,'0')).join(''); LS.set('device',t); }
   return t;
 }
-let prefs=Object.assign({saveAudio:false,notify:true,del:true,mic:'',site:'',type:'朝礼',channel:0},LS.get('prefs',{}));
+let prefs=Object.assign({saveAudio:false,notify:true,del:true,keepAwake:true,mic:'',site:'',type:'朝礼',channel:0},LS.get('prefs',{}));
 const savePrefs=()=>LS.set('prefs',prefs);
 let cfg=null;   // 許可後にGASから受け取る設定（APIキーを含むため保存しない）
 let me=null;    // {email,name}
@@ -311,7 +339,27 @@ async function api(action,payload){
 /* ========== 起動・申請・許可 ========== */
 function navVisible(v){ const root=(pipWin&&pipWin.document)||document; root.querySelectorAll('.nav').forEach(b=>b.style.display=v?'':'none'); }
 function showReg(msg){ navVisible(false); $('#who').textContent=''; go('reg'); const r=LS.get('reg',null); if(r){ $('#regEmail').value=r.email||''; $('#regName').value=r.name||''; } if(msg) showMsg('#regMsg','warn',msg); else hideMsg('#regMsg'); }
-function showWait(msg){ navVisible(false); $('#who').textContent=''; const r=LS.get('reg',{}); $('#waitEmail').textContent='申請したメールアドレス：'+(r.email||''); go('wait'); if(msg) showMsg('#waitMsg','warn',msg); else hideMsg('#waitMsg'); }
+let pollT=null;
+function stopPoll(){ clearInterval(pollT); pollT=null; }
+function showWait(msg,row){
+  navVisible(false); $('#who').textContent=''; const r=LS.get('reg',{});
+  if(row) LS.set('regRow',row); const rr=row||LS.get('regRow',null);
+  $('#waitEmail').textContent='申請したメールアドレス：'+(r.email||'');
+  $('#waitRow').textContent=rr?'「PC利用者」シートの '+rr+' 行目が、この端末の申請です。':'';
+  go('wait'); if(msg) showMsg('#waitMsg','warn',msg); else hideMsg('#waitMsg');
+  // 許可されたら自動で切り替わるよう、20秒ごとに確認する
+  stopPoll(); $('#waitPoll').textContent='許可されると自動で使えるようになります（20秒ごとに確認中）';
+  pollT=setInterval(()=>checkApproval(false),20000);
+}
+async function checkApproval(manual){
+  if(view!=='wait') { stopPoll(); return; }
+  try{
+    const j=await api('status');
+    if(j.status==='approved'){ stopPoll(); enterApp(j); toast('許可されました。使えるようになりました'); return; }
+    if(j.status==='pending'){ if(j.row) { LS.set('regRow',j.row); $('#waitRow').textContent='「PC利用者」シートの '+j.row+' 行目が、この端末の申請です。'; } if(manual) showMsg('#waitMsg','warn','まだ許可されていません。'); return; }
+    stopPoll(); LS.del('reg'); showReg('利用登録が見つかりません（管理者が削除した可能性があります）。もう一度申請してください。');
+  }catch(e){ if(manual&&!e.code) showMsg('#waitMsg','err',e.message); }
+}
 async function boot(){
   if(!GAS_URL){ $('#bootMsg').textContent='管理者の設定が未完了です（config.js に GAS のURLがありません）。'; return; }
   const reg=LS.get('reg',null);
@@ -320,7 +368,7 @@ async function boot(){
   try{
     const j=await api('status');
     if(j.status==='approved') return enterApp(j);
-    if(j.status==='pending') return showWait();
+    if(j.status==='pending') return showWait('',j.row);
     LS.del('reg'); showReg('利用登録が見つかりません（管理者が削除した可能性があります）。もう一度申請してください。');
   }catch(e){
     if(e.code) return;
@@ -335,13 +383,14 @@ $('#regBtn').onclick=async()=>{
     const j=await api('register',{email,name});
     LS.set('reg',{email:j.email||email,name});
     if(j.status==='approved'){ const s=await api('status'); return enterApp(s); }
-    showWait();
+    showWait('',j.row);
   }catch(e){ showMsg('#regMsg','err',e.message); }
   finally{ b.disabled=false; b.textContent='申請する'; }
 };
-$('#reloadBtn').onclick=()=>location.reload();
+$('#reloadBtn').onclick=()=>checkApproval(true);
 $('#reRegBtn').onclick=()=>{ if(!W().confirm('別のメールアドレスで申請し直しますか？（この端末の申請は新しいものになります）')) return; LS.del('reg'); LS.del('device'); showReg(); };
 function enterApp(j){
+  stopPoll();
   cfg=j.config; me={email:j.email,name:j.name};
   if(!cfg.gemini){ go('boot'); $('#bootMsg').textContent='管理者の設定が未完了です（Gemini APIキーが未設定）。管理者に連絡してください。'; return; }
   $('#who').textContent=j.name||j.email; navVisible(true);
@@ -360,9 +409,9 @@ $('#cType').oninput=()=>{ prefs.type=$('#cType').value.trim()||'朝礼'; savePre
 $('#cChannel').onchange=()=>{ prefs.channel=Number($('#cChannel').value); savePrefs(); };
 
 /* ========== 設定（端末ごと） ========== */
-function fillSet(){ $('#setWho').textContent=me?((me.name?me.name+'　':'')+me.email):''; $('#sSaveAudio').checked=prefs.saveAudio; $('#sNotify').checked=prefs.notify; $('#sDel').checked=prefs.del; hideMsg('#sMsg'); }
+function fillSet(){ $('#setWho').textContent=me?((me.name?me.name+'　':'')+me.email):''; $('#sSaveAudio').checked=prefs.saveAudio; $('#sNotify').checked=prefs.notify; $('#sDel').checked=prefs.del; $('#sAwake').checked=prefs.keepAwake!==false; hideMsg('#sMsg'); }
 $('#sSave').onclick=()=>{
-  prefs.saveAudio=$('#sSaveAudio').checked; prefs.notify=$('#sNotify').checked; prefs.del=$('#sDel').checked; savePrefs();
+  prefs.saveAudio=$('#sSaveAudio').checked; prefs.notify=$('#sNotify').checked; prefs.del=$('#sDel').checked; prefs.keepAwake=$('#sAwake').checked; savePrefs(); applyAwake();
   showMsg('#sMsg','ok','保存しました。');
   if(prefs.notify && 'Notification' in window && Notification.permission==='default') Notification.requestPermission();
 };
@@ -380,7 +429,18 @@ if('serviceWorker' in navigator && location.protocol==='https:') navigator.servi
 let installEvt=null;
 window.addEventListener('beforeinstallprompt',e=>{ e.preventDefault(); installEvt=e; $('#installBtn').style.display=''; $('#popText').textContent='アプリとして追加すると、次から小窓で直接起動できます'; });
 $('#installBtn').onclick=async()=>{ if(!installEvt) return; installEvt.prompt(); const r=await installEvt.userChoice; installEvt=null; $('#installBtn').style.display='none'; if(r.outcome==='accepted') $('#popText').textContent='追加しました。デスクトップかスタートメニューの「録音要約」から起動してください。'; };
-if(standalone){ const fitWin=()=>{ try{ if(window.outerWidth>520){ window.resizeTo(420,Math.min(screen.availHeight,1000)); window.moveTo((screen.availLeft||0)+screen.availWidth-440,(screen.availTop||0)); } }catch(e){} }; fitWin(); window.addEventListener('load',fitWin); }
+if(standalone && !/iPhone|iPad|Android/i.test(navigator.userAgent)){
+  // アプリとして起動したPCでは、ウィンドウの中身を iPhone と同じ 393×852 にそろえる
+  const fitWin=()=>{ try{
+    const fw=window.outerWidth-window.innerWidth, fh=window.outerHeight-window.innerHeight;
+    const w=393+fw, h=Math.min(852+fh, screen.availHeight);
+    if(Math.abs(window.outerWidth-w)>4||Math.abs(window.outerHeight-h)>4){
+      window.resizeTo(w,h);
+      window.moveTo((screen.availLeft||0)+screen.availWidth-w-16,(screen.availTop||0)+Math.max(0,Math.round((screen.availHeight-h)/2)));
+    }
+  }catch(e){} };
+  fitWin(); window.addEventListener('load',fitWin);
+}
 if('documentPictureInPicture' in window){ $('#pipBtn').style.display=''; }
 $('#pipBtn').onclick=async()=>{
   if(pipWin){ pipWin.close(); return; }
@@ -425,9 +485,43 @@ async function listMics(){
   }catch(e){}
 }
 $('#mic').onchange=()=>{ prefs.mic=$('#mic').value; savePrefs(); };
-async function lockWake(){ try{ if('wakeLock' in navigator){ wakeLock=await navigator.wakeLock.request('screen'); } }catch(e){} }
-function unlockWake(){ try{ wakeLock&&wakeLock.release(); }catch(e){} wakeLock=null; }
-document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible' && (view==='rec'||view==='proc') && !wakeLock) lockWake(); });
+/* ---- 画面を消さない（自動ロック防止） ----
+ * 1) Screen Wake Lock API（iPhone は iOS 16.4 以降の Safari）
+ * 2) 使えない環境では、無音・透明の短い動画をループ再生して自動ロックを防ぐ（iPhoneで一般的な方法）
+ * 手動で電源ボタンを押したロックは防げない（防ぐ必要もない） */
+const TINY_MP4='data:video/mp4;base64,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';
+let awakeVideo=null, needAwake=false;
+const wantAwake=()=>prefs.keepAwake!==false || view==='rec' || view==='proc';
+async function lockWake(){
+  needAwake=true;
+  if(document.visibilityState!=='visible') return;
+  try{ if('wakeLock' in navigator){ if(!wakeLock){ wakeLock=await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release',()=>{ wakeLock=null; }); } return; } }catch(e){ wakeLock=null; }
+  startAwakeVideo();
+}
+function startAwakeVideo(){
+  try{
+    if(!awakeVideo){
+      awakeVideo=document.createElement('video');
+      awakeVideo.setAttribute('playsinline',''); awakeVideo.setAttribute('muted',''); awakeVideo.muted=true; awakeVideo.loop=true;
+      awakeVideo.style.cssText='position:fixed;width:1px;height:1px;opacity:0.01;pointer-events:none;left:0;bottom:0';
+      awakeVideo.src=TINY_MP4; document.body.appendChild(awakeVideo);
+    }
+    const pr=awakeVideo.play(); if(pr&&pr.catch) pr.catch(()=>{});
+  }catch(e){}
+}
+function unlockWake(){
+  if(prefs.keepAwake!==false) return;   // 常時オンの設定なら解除しない
+  needAwake=false;
+  try{ wakeLock&&wakeLock.release(); }catch(e){} wakeLock=null;
+  try{ awakeVideo&&awakeVideo.pause(); }catch(e){}
+}
+function applyAwake(){ if(wantAwake()) lockWake(); else { needAwake=true; unlockWake(); } }
+// 画面に戻ったときは取り直す（別アプリから戻るとWake Lockは自動で外れるため）
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible' && (needAwake||wantAwake())) { wakeLock=null; lockWake(); } });
+// iPhoneは操作（タップ）をきっかけにしないと有効にならないことがあるため、最初のタップでも取り直す
+['touchend','click'].forEach(ev=>document.addEventListener(ev,()=>{ if(wantAwake() && !wakeLock) lockWake(); },{passive:true}));
+applyAwake();
+const extOf=t=>/mp4|m4a|aac/.test(t||'')?'.m4a':/ogg/.test(t||'')?'.ogg':'.webm';
 const recName=t=>{ const d=new Date(t); return '録音_'+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'_'+pad(d.getHours())+pad(d.getMinutes()); };
 
 $('#recBtn').onclick=async()=>{
@@ -435,7 +529,7 @@ $('#recBtn').onclick=async()=>{
   try{ stream=await navigator.mediaDevices.getUserMedia({audio:{deviceId:prefs.mic?{exact:prefs.mic}:undefined,channelCount:1,echoCancellation:true,noiseSuppression:true,autoGainControl:true}}); }
   catch(e){ showMsg('#idleMsg','err','マイクを使えません。ブラウザのマイク許可と、Windowsの「設定 > プライバシー > マイク」を確認してください。\n'+e.message); return; }
   listMics();
-  const type=['audio/webm;codecs=opus','audio/webm','audio/ogg;codecs=opus'].find(t=>MediaRecorder.isTypeSupported(t))||'';
+  const type=['audio/webm;codecs=opus','audio/webm','audio/mp4','audio/ogg;codecs=opus'].find(t=>MediaRecorder.isTypeSupported(t))||'';
   mr=new MediaRecorder(stream,type?{mimeType:type,audioBitsPerSecond:32000}:{});
   sid='s'+Date.now(); seq=0; chunks=[]; recMs=0; recFrom=Date.now();
   const startedAt=Date.now();
@@ -443,7 +537,7 @@ $('#recBtn').onclick=async()=>{
   mr.onstop=()=>{
     stopMeter(); stream.getTracks().forEach(t=>t.stop()); clearInterval(tickT); unlockWake();
     const blob=new Blob(chunks,{type:(mr.mimeType||'audio/webm').split(';')[0]});
-    setAudio(new File([blob],recName(startedAt)+'.webm',{type:blob.type,lastModified:startedAt}), recMs/1000, 'rec', sid);
+    setAudio(new File([blob],recName(startedAt)+extOf(blob.type),{type:blob.type,lastModified:startedAt}), recMs/1000, 'rec', sid);
     setTitle('');
   };
   mr.start(5000); startMeter(stream); lockWake();
@@ -505,7 +599,7 @@ async function checkRecover(){
   $('#recoverYes').onclick=()=>{
     const type=(last.type||'audio/webm').split(';')[0];
     $('#recoverBanner').style.display='none';
-    setAudio(new File(cs.map(c=>c.blob),recName(last.startedAt)+'_復元.webm',{type,lastModified:last.startedAt}),last.ms/1000,'rec',s);
+    setAudio(new File(cs.map(c=>c.blob),recName(last.startedAt)+'_復元'+extOf(type),{type,lastModified:last.startedAt}),last.ms/1000,'rec',s);
     sids.filter(x=>x!==s).forEach(x=>chunkClear(x));
   };
   $('#recoverNo').onclick=async()=>{ if(!W().confirm('残っている録音を破棄しますか？')) return; for(const x of sids) await chunkClear(x); $('#recoverBanner').style.display='none'; };
@@ -569,11 +663,55 @@ const CONT='出力が途中で切れました。直前の出力の続きから�
 let busy=false;
 function step(s,st){ const li=$('#steps').querySelector('li[data-s="'+s+'"]'); if(li) li.className=st||''; }
 $('#sumBtn').onclick=()=>runPipeline();
-$('#retryBtn').onclick=()=>runPipeline();
-$('#backDoneBtn').onclick=()=>go('done');
+let lastMode='audio';
+$('#retryBtn').onclick=()=>lastMode==='text'?runTextSummary():runPipeline();
+$('#backDoneBtn').onclick=()=>go(lastMode==='text'?'paste':'done');
+
+/* ========== テキスト貼り付け → 要約 ========== */
+const PASTE_MAX=60000;
+function pasteCount(){ const n=$('#pasteText').value.trim().length; $('#pasteCount').textContent=n.toLocaleString()+'文字'+(n>PASTE_MAX?'（上限6万文字を超えています）':''); $('#pasteCount').style.color=n>PASTE_MAX?'var(--err)':''; LS.set('pasteDraft',$('#pasteText').value); }
+$('#pasteOpenBtn').onclick=()=>{ $('#pasteText').value=LS.get('pasteDraft',''); pasteCount(); hideMsg('#pasteMsg'); go('paste'); setTimeout(()=>$('#pasteText').focus(),50); };
+$('#pasteText').addEventListener('input',pasteCount);
+$('#pasteClipBtn').onclick=async()=>{
+  try{ const t=await navigator.clipboard.readText(); if(!t){ showMsg('#pasteMsg','warn','クリップボードが空です。'); return; } const ta=$('#pasteText'); ta.value=(ta.value.trim()?ta.value.trimEnd()+'\n':'')+t; pasteCount(); hideMsg('#pasteMsg'); }
+  catch(e){ showMsg('#pasteMsg','warn','自動で貼り付けできませんでした。入力欄を長押し（PCは Ctrl+V）で貼り付けてください。'); $('#pasteText').focus(); }
+};
+$('#pasteClearBtn').onclick=()=>{ if($('#pasteText').value && !W().confirm('入力した内容を消しますか？')) return; $('#pasteText').value=''; pasteCount(); };
+$('#pasteBackBtn').onclick=()=>go('idle');
+$('#pasteSumBtn').onclick=()=>{
+  const t=$('#pasteText').value.trim();
+  if(t.length<10){ showMsg('#pasteMsg','err','文字起こしテキストを貼り付けてください。'); return; }
+  if(t.length>PASTE_MAX){ showMsg('#pasteMsg','err','6万文字を超えています。分けて要約してください。'); return; }
+  runTextSummary();
+};
+async function runTextSummary(){
+  if(!cfg) return;
+  const text=$('#pasteText').value.trim(); if(!text) return;
+  lastMode='text'; busy=true; go('proc'); hideMsg('#procMsg'); $('#procActs').style.display='none';
+  $('#steps').querySelectorAll('li').forEach(li=>{ li.style.display=li.dataset.s==='sm'?'':'none'; li.className=''; });
+  const t0=Date.now(); const tk=setInterval(()=>{ const t=fmtDur((Date.now()-t0)/1000); $('#procTime').textContent='経過 '+t; setTitle('処理中 '+t); },1000);
+  lockWake();
+  try{
+    step('sm','run');
+    const d=new Date(), date=d.getFullYear()+'/'+pad(d.getMonth()+1)+'/'+pad(d.getDate());
+    const site=$('#cSite').value, type=$('#cType').value.trim()||'朝礼';
+    const j=await api('summarize',{text,site,date,meetingType:type,note:'貼り付けられた文字起こしテキスト'});
+    step('sm','done');
+    const rec={id:'r'+Date.now(),createdAt:Date.now(),recordedAt:Date.now(),title:type+'サマリー '+(site?site+' ':'')+date,duration:0,source:'text',
+      fileName:'',transcript:text,data:j.data,text:j.text,truncated:false,sec:Math.round((Date.now()-t0)/1000),audio:null,slackAt:null,
+      quota:j.dailyLimit?('本日 '+j.usedToday+'/'+j.dailyLimit+'回'):''};
+    await recPut(rec);
+    LS.del('pasteDraft');
+    showResult(rec); notifyDone(rec);
+  }catch(e){
+    step('sm','fail');
+    if(view==='proc'){ showMsg('#procMsg','err',e.message); $('#procActs').style.display='grid'; setTitle('エラー'); }
+  }finally{ clearInterval(tk); busy=false; unlockWake(); }
+}
 async function runPipeline(){
   if(!audio||!cfg) return;
   busy=true; go('proc'); hideMsg('#procMsg'); $('#procActs').style.display='none';
+  lastMode='audio'; $('#steps').querySelectorAll('li').forEach(li=>li.style.display='');
   ['up','tr','sm'].forEach(s=>step(s,''));
   const file=audio.file, mime=mimeOf(file), t0=Date.now();
   const tk=setInterval(()=>{ const t=fmtDur((Date.now()-t0)/1000); $('#procTime').textContent='経過 '+t; setTitle('処理中 '+t); },1000);
@@ -627,7 +765,9 @@ async function runPipeline(){
 function notifyDone(rec){
   setTitle('要約完了');
   if(prefs.notify && 'Notification' in window && Notification.permission==='granted' && document.visibilityState!=='visible'){
-    try{ const n=new Notification('要約が完了しました',{body:rec.title}); n.onclick=()=>{ window.focus(); n.close(); }; }catch(e){}
+    // Android の Chrome は new Notification() が使えないため、Service Worker 経由で出す
+    const viaSW=()=>navigator.serviceWorker&&navigator.serviceWorker.getRegistration().then(r=>r&&r.showNotification('要約が完了しました',{body:rec.title,icon:'icon-192.png',tag:'rec-summary'})).catch(()=>{});
+    try{ const n=new Notification('要約が完了しました',{body:rec.title}); n.onclick=()=>{ window.focus(); n.close(); }; }catch(e){ viaSW(); }
   }
 }
 
@@ -700,7 +840,7 @@ async function renderHistory(){
   const q=$('#hq').value.trim().toLowerCase();
   rs.sort((a,b)=>b.createdAt-a.createdAt);
   if(q) rs=rs.filter(r=>(r.title+' '+r.text+' '+r.transcript).toLowerCase().includes(q));
-  $('#hList').innerHTML=rs.length?rs.map(r=>'<div class="hitem" data-id="'+r.id+'"><div class="tt">'+esc(r.title)+'</div><div class="mm">'+fmtDate(r.recordedAt)+(r.duration?' / '+fmtDur(r.duration):'')+(r.slackAt?' / Slack送信済み':'')+'</div><div class="row" style="margin-top:4px"><span class="grow"></span>'+(r.audio?'<button class="btn sm" data-act="audio">音声</button>':'')+'<button class="btn sm" data-act="del" style="color:var(--err)">削除</button></div></div>').join(''):'<div class="small center" style="padding:30px 0">'+(q?'該当なし':'まだ履歴がありません')+'</div>';
+  $('#hList').innerHTML=rs.length?rs.map(r=>'<div class="hitem" data-id="'+r.id+'"><div class="tt">'+esc(r.title)+'</div><div class="mm">'+fmtDate(r.recordedAt)+(r.duration?' / '+fmtDur(r.duration):'')+(r.source==='text'?' / テキスト貼り付け':'')+(r.slackAt?' / Slack送信済み':'')+'</div><div class="row" style="margin-top:4px"><span class="grow"></span>'+(r.audio?'<button class="btn sm" data-act="audio">音声</button>':'')+'<button class="btn sm" data-act="del" style="color:var(--err)">削除</button></div></div>').join(''):'<div class="small center" style="padding:30px 0">'+(q?'該当なし':'まだ履歴がありません')+'</div>';
 }
 $('#hq').oninput=()=>renderHistory();
 $('#hList').onclick=async e=>{
