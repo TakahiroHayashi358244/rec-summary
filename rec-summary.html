@@ -240,7 +240,7 @@ h2{font-size:14px;margin:4px 0 0}
 /* ============================================================
  * 管理者が設定する項目：朝礼サマリー（GAS）の /exec のURL
  * ============================================================ */
-const GAS_URL = '';
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbxLYVRHVtaHm2kH07Vt6OSIlMUzkp62eZ6_oGdSgZ2RdbXveI0Qg-UZaOfmOKQ_sDc1/exec';
 
 const BASE='https://generativelanguage.googleapis.com';
 const INLINE_MAX=14*1024*1024, MAX_CONT=6;
@@ -378,7 +378,7 @@ if('serviceWorker' in navigator && location.protocol==='https:') navigator.servi
 let installEvt=null;
 window.addEventListener('beforeinstallprompt',e=>{ e.preventDefault(); installEvt=e; $('#installBtn').style.display=''; $('#popText').textContent='アプリとして追加すると、次から小窓で直接起動できます'; });
 $('#installBtn').onclick=async()=>{ if(!installEvt) return; installEvt.prompt(); const r=await installEvt.userChoice; installEvt=null; $('#installBtn').style.display='none'; if(r.outcome==='accepted') $('#popText').textContent='追加しました。デスクトップかスタートメニューの「録音要約」から起動してください。'; };
-if(standalone){ const fitWin=()=>{ try{ if(window.outerWidth>520){ window.resizeTo(420,Math.min(screen.availHeight,1000)); window.moveTo((screen.availLeft||0)+screen.availWidth-440,(screen.availTop||0)); } }catch(e){} }; fitWin(); window.addEventListener('load',fitWin); }
+if(standalone){ try{ if(!LS.get('sized',false)){ window.resizeTo(400,700); window.moveTo(screen.availWidth-420,40); LS.set('sized',true); } }catch(e){} }
 if('documentPictureInPicture' in window){ $('#pipBtn').style.display=''; }
 $('#pipBtn').onclick=async()=>{
   if(pipWin){ pipWin.close(); return; }
