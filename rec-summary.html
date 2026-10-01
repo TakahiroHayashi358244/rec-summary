@@ -333,6 +333,7 @@ html.pcapp #app{max-width:none!important;width:100%!important;height:100%!import
         <button class="btn pri" id="sSave">保存</button>
         <button class="btn" data-go="back">閉じる</button>
       </div>
+      <div class="small" id="appVer" style="text-align:right">版：2026-10-01b</div>
       <button class="btn sm" id="sReset" style="align-self:flex-start;color:var(--err)">このPCの利用登録を解除する</button>
       <div class="msg" id="sMsg"></div>
     </div>
@@ -344,6 +345,7 @@ html.pcapp #app{max-width:none!important;width:100%!important;height:100%!import
 <script src="config.js"></script>
 <script>
 'use strict';
+const APP_VERSION='2026-10-01b'; console.log('録音要約 版',APP_VERSION);
 /* ============================================================
  * 朝礼サマリー（GAS）の /exec のURLは、同じ場所に置いた config.js に書く
  * （このHTMLを更新しても設定が消えないように分けている）
@@ -554,7 +556,7 @@ $('#sReset').onclick=()=>{ if(!W().confirm('このPCの利用登録を解除し�
 
 /* ========== 小窓表示 ========== */
 const standalone=matchMedia('(display-mode: standalone)').matches;
-if('serviceWorker' in navigator && location.protocol==='https:') navigator.serviceWorker.register('sw.js').catch(()=>{});
+if('serviceWorker' in navigator && location.protocol==='https:') navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).then(r=>r.update()).catch(()=>{});
 // PCのアプリ表示かどうか：display-mode の判定に加え、アドレスバーやタブが無い（上部の枠が薄い）ウィンドウもアプリ表示とみなす
 const IS_MOBILE=/iPhone|iPad|Android/i.test(navigator.userAgent);
 const PC_APP = !IS_MOBILE && ( standalone
