@@ -47,7 +47,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font:13px/1.55 "Yu Gothic UI
 .btn:disabled{opacity:.5;cursor:not-allowed}
 .row{display:flex;gap:8px;align-items:center}
 .row>.grow{flex:1;min-width:0}
-input[type=text],input[type=email],select,textarea{width:100%;font:inherit;font-size:16px;padding:6px 9px;border:1px solid #cfd5de;border-radius:6px;background:#fff;color:var(--ink)}
+input[type=text],input[type=email],input[type=password],select,textarea{width:100%;font:inherit;font-size:16px;line-height:1.4;padding:10px 12px;border:1px solid #cfd5de;border-radius:6px;background:#fff;color:var(--ink)}
 textarea{resize:none}
 .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px}
 .center{text-align:center}
@@ -108,7 +108,15 @@ h2{font-size:14px;margin:4px 0 0}
 /* ===== 画面いっぱいに使うレイアウト（iPhone基準） ===== */
 .btn{min-height:40px}
 .btn.wide{padding:14px;font-size:16px;min-height:54px}
-select,input[type=text],input[type=email]{min-height:46px}
+select,input[type=text],input[type=email],input[type=password]{min-height:50px}
+select{-webkit-appearance:none;appearance:none;padding-right:36px;text-overflow:ellipsis;white-space:nowrap;overflow:hidden;
+  background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%236b7280' stroke-width='2'/%3E%3C/svg%3E") no-repeat right 12px center}
+/* 横向き（スマホ）では縦向きにするよう案内 */
+#rotateMask{display:none}
+@media (orientation:landscape) and (max-height:500px) and (pointer:coarse){
+  #rotateMask{display:flex;position:fixed;inset:0;z-index:50;background:var(--bg);align-items:center;justify-content:center;flex-direction:column;gap:12px;font-size:18px;font-weight:700;color:var(--ink);text-align:center;padding:20px}
+  #rotateMask .ico{width:56px;height:90px;border:4px solid var(--pri);border-radius:12px}
+}
 #s-idle>.card.center{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px}
 .recbtn{width:min(66vw,36vh,270px);height:min(66vw,36vh,270px);font-size:34px;border-width:12px;letter-spacing:4px}
 #s-idle .drop{padding:16px;font-size:13px}
@@ -135,6 +143,13 @@ select,input[type=text],input[type=email]{min-height:46px}
 #s-result .acts .btn{min-height:54px;font-size:16px}
 #s-result #newBtn{min-height:64px;font-size:19px}
 #s-paste #pasteSumBtn{min-height:64px;font-size:19px}
+
+/* PCでアプリとして起動したとき：枠・余白なしでウィンドウいっぱいに表示 */
+html.pcapp,html.pcapp body{background:var(--bg)!important}
+html.pcapp body{display:block!important;min-height:0}
+html.pcapp .recbtn{width:259px;height:259px}
+html.pcapp #s-rec .timer{font-size:84px}
+html.pcapp #app{max-width:none!important;width:100%!important;height:100%!important;border:0!important;border-radius:0!important;box-shadow:none!important}
 </style>
 </head>
 <body>
@@ -147,7 +162,6 @@ select,input[type=text],input[type=email]{min-height:46px}
     <button class="btn ghost sm nav" data-go="set" style="display:none">設定</button>
   </div>
   <div class="body">
-    <div class="banner" id="popBanner" style="display:none"><span class="grow" id="popText">小窓で使うと便利です</span><button class="btn sm" id="installBtn" style="display:none">アプリとして追加</button><button class="btn sm" id="popBtn">小窓で開く</button></div>
     <div class="banner warn" id="recoverBanner" style="display:none"><span class="grow" id="recoverText"></span><button class="btn sm" id="recoverYes">復元</button><button class="btn sm" id="recoverNo">破棄</button></div>
 
     <!-- 起動中 -->
@@ -297,7 +311,16 @@ select,input[type=text],input[type=email]{min-height:46px}
         <div class="tags" id="typeTags"></div>
         <div class="row" style="margin-top:8px"><input type="text" id="typeNew" class="grow" placeholder="新しい会議種別（例：夕礼）"><button class="btn" id="typeAdd">追加</button></div>
       </div>
-      <div class="small">拠点・会議種別の変更はこの端末だけに反映されます。用語辞書・投稿先・APIキーは管理者が管理しています。</div>
+      <div class="card">
+        <b>Slack送信先</b>
+        <div class="small" style="margin-top:2px">追加・削除はすべての端末に反映されます。操作には管理PIN（朝礼サマリーと同じ）が必要です。</div>
+        <div class="tags" id="chTags"></div>
+        <input type="text" id="chName" placeholder="送信先の名前（例：#hfo1-朝礼）" style="margin-top:8px">
+        <input type="text" id="chUrl" placeholder="https://hooks.slack.com/services/..." style="margin-top:8px" autocomplete="off">
+        <div class="row" style="margin-top:8px"><input type="password" id="chPin" class="grow" inputmode="numeric" placeholder="管理PIN" autocomplete="off"><button class="btn" id="chAdd">追加</button></div>
+        <div class="msg" id="chMsg" style="margin-top:8px"></div>
+      </div>
+      <div class="small">拠点・会議種別の変更はこの端末だけに反映されます。用語辞書・APIキーは管理者が管理しています。</div>
       <div class="acts">
         <button class="btn pri" id="sSave">保存</button>
         <button class="btn" data-go="back">閉じる</button>
@@ -308,6 +331,7 @@ select,input[type=text],input[type=email]{min-height:46px}
   </div>
 </div>
 <div class="toast" id="toast"></div>
+<div id="rotateMask"><div class="ico"></div>画面を縦向きにしてお使いください</div>
 
 <script src="config.js"></script>
 <script>
@@ -474,16 +498,45 @@ function applyIdle(){
   $('#cSite').innerHTML='<option value="">事業所（未指定）</option>'+sites.map(x=>'<option'+(x===want?' selected':'')+'>'+esc(x)+'</option>').join('');
   const types=typeList(); const wt=types.includes(prefs.type)?prefs.type:types[0];
   $('#cType').innerHTML=types.map(x=>'<option'+(x===wt?' selected':'')+'>'+esc(x)+'</option>').join('');
-  const list=(cfg.channels||[]).filter(x=>x.configured), ch=$('#cChannel');
-  if(cfg.lockedChannel==null && list.length>1){ ch.style.display=''; ch.innerHTML=list.map(x=>'<option value="'+x.id+'"'+(x.id==prefs.channel?' selected':'')+'>投稿先: '+esc(x.name)+'</option>').join(''); }
-  else { ch.style.display='none'; if(list.length===1) prefs.channel=list[0].id; }
+  const opts=channelOptions(), ch=$('#cChannel');
+  if(!opts.some(o=>o.v===prefs.target)) prefs.target=opts.length?opts[0].v:'';
+  ch.innerHTML=opts.map(o=>'<option value="'+esc(o.v)+'"'+(o.v===prefs.target?' selected':'')+'>Slack送信先：'+esc(o.name)+'</option>').join('');
+  ch.style.display=opts.length>1?'':'none';
 }
+// 送信先の候補：朝礼サマリーの投稿先（固定されていればその1つ）＋ PCアプリで追加した送信先
+function channelOptions(){
+  const out=[]; const all=(cfg&&cfg.channels)||[];
+  if(cfg&&cfg.lockedChannel!=null){ const c=all.find(x=>x.id==cfg.lockedChannel); if(c&&c.configured) out.push({v:'c'+c.id,name:c.name}); }
+  else all.filter(x=>x.configured).forEach(c=>out.push({v:'c'+c.id,name:c.name}));
+  ((cfg&&cfg.pcChannels)||[]).forEach(c=>out.push({v:c.id,name:c.name,pc:true}));
+  return out;
+}
+function renderChTags(){
+  const opts=cfg?channelOptions():[];
+  $('#chTags').innerHTML=opts.map(o=>'<span class="tag">'+esc(o.name)+(o.pc?'<button data-chdel="'+esc(o.v)+'" title="削除">×</button>':'<span class="small" style="padding:0 8px 0 4px">（朝礼サマリー）</span>')+'</span>').join('')||'<span class="small">送信先がありません</span>';
+}
+$('#chAdd').onclick=async()=>{
+  const name=$('#chName').value.trim(), url=$('#chUrl').value.trim(), pin=$('#chPin').value.trim();
+  if(!name||!url){ showMsg('#chMsg','err','名前とWebhook URLを入力してください。'); return; }
+  if(!/^https:\/\/hooks\.slack\.com\/services\/\S+$/.test(url)){ showMsg('#chMsg','err','Webhook URLは https://hooks.slack.com/services/... で始まるURLです。'); return; }
+  if(!pin){ showMsg('#chMsg','err','管理PINを入力してください。'); return; }
+  const b=$('#chAdd'); b.disabled=true;
+  try{ const j=await api('channelAdd',{name,url,pin}); cfg.pcChannels=j.pcChannels; $('#chName').value=''; $('#chUrl').value=''; renderChTags(); applyIdle(); showMsg('#chMsg','ok','「'+name+'」を追加しました。'); }
+  catch(e){ showMsg('#chMsg','err',e.message); } finally{ b.disabled=false; }
+};
+$('#chTags').addEventListener('click',async e=>{
+  const b=e.target.closest('[data-chdel]'); if(!b) return;
+  const pin=$('#chPin').value.trim(); if(!pin){ showMsg('#chMsg','err','削除するには、下の欄に管理PINを入力してから×を押してください。'); $('#chPin').focus(); return; }
+  const o=channelOptions().find(x=>x.v===b.dataset.chdel); if(!o||!W().confirm('送信先「'+o.name+'」を削除しますか？（全端末から消えます）')) return;
+  try{ const j=await api('channelDel',{id:o.v,pin}); cfg.pcChannels=j.pcChannels; renderChTags(); applyIdle(); showMsg('#chMsg','ok','「'+o.name+'」を削除しました。'); }
+  catch(e){ showMsg('#chMsg','err',e.message); }
+});
 $('#cSite').onchange=()=>{ prefs.site=$('#cSite').value; savePrefs(); };
 $('#cType').onchange=()=>{ prefs.type=$('#cType').value; savePrefs(); };
-$('#cChannel').onchange=()=>{ prefs.channel=Number($('#cChannel').value); savePrefs(); };
+$('#cChannel').onchange=()=>{ prefs.target=$('#cChannel').value; savePrefs(); };
 
 /* ========== 設定（端末ごと） ========== */
-function fillSet(){ renderTags(); $('#setWho').textContent=me?((me.name?me.name+'　':'')+me.email):''; $('#sSaveAudio').checked=prefs.saveAudio; $('#sNotify').checked=prefs.notify; $('#sDel').checked=prefs.del; $('#sAwake').checked=prefs.keepAwake!==false; hideMsg('#sMsg'); }
+function fillSet(){ renderTags(); renderChTags(); hideMsg('#chMsg'); $('#chPin').value=''; $('#setWho').textContent=me?((me.name?me.name+'　':'')+me.email):''; $('#sSaveAudio').checked=prefs.saveAudio; $('#sNotify').checked=prefs.notify; $('#sDel').checked=prefs.del; $('#sAwake').checked=prefs.keepAwake!==false; hideMsg('#sMsg'); }
 $('#sSave').onclick=()=>{
   prefs.saveAudio=$('#sSaveAudio').checked; prefs.notify=$('#sNotify').checked; prefs.del=$('#sDel').checked; prefs.keepAwake=$('#sAwake').checked; savePrefs(); applyAwake();
   showMsg('#sMsg','ok','保存しました。');
@@ -493,28 +546,27 @@ $('#sReset').onclick=()=>{ if(!W().confirm('このPCの利用登録を解除し�
 
 /* ========== 小窓表示 ========== */
 const standalone=matchMedia('(display-mode: standalone)').matches;
-const isPopup = window.name==='recSummaryPopup' || standalone || window.outerWidth<=520;
-if(!isPopup) $('#popBanner').style.display='flex';
-$('#popBtn').onclick=()=>{
-  const w=window.open(location.href,'recSummaryPopup','popup,width=400,height=680,left='+(screen.availWidth-420)+',top=40');
-  if(w){ $('#popText').textContent='小窓で開きました。このタブは閉じて構いません。'; } else toast('ポップアップがブロックされました。アドレスバー右端から許可してください。');
-};
 if('serviceWorker' in navigator && location.protocol==='https:') navigator.serviceWorker.register('sw.js').catch(()=>{});
-let installEvt=null;
-window.addEventListener('beforeinstallprompt',e=>{ e.preventDefault(); installEvt=e; $('#installBtn').style.display=''; $('#popText').textContent='アプリとして追加すると、次から小窓で直接起動できます'; });
-$('#installBtn').onclick=async()=>{ if(!installEvt) return; installEvt.prompt(); const r=await installEvt.userChoice; installEvt=null; $('#installBtn').style.display='none'; if(r.outcome==='accepted') $('#popText').textContent='追加しました。デスクトップかスタートメニューの「録音要約」から起動してください。'; };
-if(standalone && !/iPhone|iPad|Android/i.test(navigator.userAgent)){
-  // アプリとして起動したPCでは、ウィンドウの中身を iPhone と同じ 393×852 にそろえる
+const PC_APP = standalone && !/iPhone|iPad|Android/i.test(navigator.userAgent);
+if(PC_APP || /[?&]pcapp=1/.test(location.search)){
+  // PCでアプリとして起動したとき：iPhoneと同じ縦横比（393:852）のまま小さめのウィンドウにし、
+  // 中身はウィンドウ幅いっぱいに縮小表示する（左右の余白なし）
+  document.documentElement.classList.add('pcapp');
+  const BW=393, BH=852;
+  const applyZoom=()=>{ const z=Math.min(window.innerWidth/BW, window.innerHeight/BH); document.documentElement.style.zoom=String(Math.max(0.5,Math.min(1.5,z))); };
   const fitWin=()=>{ try{
+    if(!PC_APP) return;
     const fw=window.outerWidth-window.innerWidth, fh=window.outerHeight-window.innerHeight;
-    const w=393+fw, h=Math.min(852+fh, screen.availHeight);
+    const ch=Math.min(700, screen.availHeight-fh-40), cw=Math.round(ch*BW/BH);
+    const w=cw+fw, h=ch+fh;
     if(Math.abs(window.outerWidth-w)>4||Math.abs(window.outerHeight-h)>4){
       window.resizeTo(w,h);
       window.moveTo((screen.availLeft||0)+screen.availWidth-w-16,(screen.availTop||0)+Math.max(0,Math.round((screen.availHeight-h)/2)));
     }
-  }catch(e){} };
-  fitWin(); window.addEventListener('load',fitWin);
+  }catch(e){} applyZoom(); };
+  applyZoom(); fitWin(); window.addEventListener('load',fitWin); window.addEventListener('resize',applyZoom);
 }
+try{ if(screen.orientation&&screen.orientation.lock) screen.orientation.lock('portrait').catch(()=>{}); }catch(e){}
 if('documentPictureInPicture' in window){ $('#pipBtn').style.display=''; }
 $('#pipBtn').onclick=async()=>{
   if(pipWin){ pipWin.close(); return; }
@@ -867,7 +919,8 @@ $('#slackBtn').onclick=async()=>{
   try{
     const data=parseChoreiText($('#outSum').value,current.data);
     if(!data.headline&&!data.sections.some(x=>x.items.length)&&!data.decisions.length&&!data.todos.length) throw new Error('要約の内容を読み取れませんでした。【見出し】と「・項目」の形を残して編集してください。');
-    const j=await api('post',{channelId:prefs.channel,data,transcript:$('#outTr').value});
+    const opts=channelOptions(); const t=opts.some(o=>o.v===prefs.target)?prefs.target:(opts[0]&&opts[0].v)||'c0';
+    const j=await api('post',Object.assign({data,transcript:$('#outTr').value}, /^pc/.test(t)?{target:t}:{channelId:Number(t.slice(1))}));
     current.data=data; current.slackAt=Date.now(); await recPut(current);
     toast('Slackに送信しました'+(j.channel?'（'+j.channel+'）':''));
     $('#resMeta').textContent=$('#resMeta').textContent.replace(' / Slack送信済み','')+' / Slack送信済み';
