@@ -300,6 +300,14 @@ html.pcapp #app{max-width:none!important;width:100%!important;height:100%!import
         <label class="chk"><input type="checkbox" id="sDel" checked> 処理後、Google側の音声をすぐ削除する</label>
         <label class="chk"><input type="checkbox" id="sAwake" checked> アプリを開いている間は画面を消さない（自動ロックを防ぐ）</label>
       </div>
+      <div class="card" id="winCard" style="display:none">
+        <b>ウィンドウの大きさ（PC）</b>
+        <div class="small" style="margin-top:2px">中身はウィンドウの大きさに合わせて自動で拡大・縮小します。</div>
+        <div class="acts" style="grid-template-columns:1fr 1fr 1fr;margin-top:8px">
+          <button class="btn" data-win="520">小</button><button class="btn" data-win="640">中</button><button class="btn" data-win="780">大</button>
+        </div>
+        <div class="msg" id="winMsg" style="margin-top:8px"></div>
+      </div>
       <div class="card">
         <b>拠点</b>
         <div class="tags" id="siteTags"></div>
@@ -559,16 +567,20 @@ if(PC_APP || /[?&]pcapp=1/.test(location.search)){
   document.documentElement.classList.add('pcapp');
   const BW=393, BH=852;
   const applyZoom=()=>{ const z=Math.min(window.innerWidth/BW, window.innerHeight/BH); document.documentElement.style.zoom=String(Math.max(0.5,Math.min(1.5,z))); };
-  const fitWin=()=>{ try{
-    if(!PC_APP) return;
+  // ウィンドウを指定の高さ（中身）にする。縦横比は iPhone と同じ
+  window.resizeAppWin=(ch)=>{ try{
     const fw=window.outerWidth-window.innerWidth, fh=window.outerHeight-window.innerHeight;
-    const ch=Math.min(700, screen.availHeight-fh-40), cw=Math.round(ch*BW/BH);
-    const w=cw+fw, h=ch+fh;
-    if(Math.abs(window.outerWidth-w)>4||Math.abs(window.outerHeight-h)>4){
-      window.resizeTo(w,h);
-      window.moveTo((screen.availLeft||0)+screen.availWidth-w-16,(screen.availTop||0)+Math.max(0,Math.round((screen.availHeight-h)/2)));
-    }
+    ch=Math.min(ch, screen.availHeight-fh-20); const cw=Math.round(ch*BW/BH), w=cw+fw, h=ch+fh;
+    window.resizeTo(w,h);
+    window.moveTo((screen.availLeft||0)+screen.availWidth-w-16,(screen.availTop||0)+Math.max(0,Math.round((screen.availHeight-h)/2)));
   }catch(e){} applyZoom(); };
+  const fitWin=()=>{ if(!PC_APP) return; const want=(LS.get('prefs',{})||{}).winH||640;
+    if(Math.abs(window.innerHeight-want)>6) window.resizeAppWin(want); };
+  $('#winCard').style.display='';
+  $('#winCard').addEventListener('click',e=>{ const b=e.target.closest('[data-win]'); if(!b) return;
+    const h=Number(b.dataset.win); prefs.winH=h; savePrefs(); const before=window.innerHeight; window.resizeAppWin(h);
+    setTimeout(()=>{ if(Math.abs(window.innerHeight-before)<3 && Math.abs(window.innerHeight-h)>6) showMsg('#winMsg','warn','ブラウザの制限で自動では大きさを変えられませんでした。ウィンドウの角をドラッグして小さくしてください（中身も一緒に縮みます。次回からその大きさで開きます）。'); else showMsg('#winMsg','ok','大きさを変更しました。'); },400);
+  });
   applyZoom(); fitWin(); window.addEventListener('load',fitWin); window.addEventListener('resize',applyZoom);
 }
 try{ if(screen.orientation&&screen.orientation.lock) screen.orientation.lock('portrait').catch(()=>{}); }catch(e){}
