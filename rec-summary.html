@@ -547,7 +547,12 @@ $('#sReset').onclick=()=>{ if(!W().confirm('このPCの利用登録を解除し�
 /* ========== 小窓表示 ========== */
 const standalone=matchMedia('(display-mode: standalone)').matches;
 if('serviceWorker' in navigator && location.protocol==='https:') navigator.serviceWorker.register('sw.js').catch(()=>{});
-const PC_APP = standalone && !/iPhone|iPad|Android/i.test(navigator.userAgent);
+// PCのアプリ表示かどうか：display-mode の判定に加え、アドレスバーやタブが無い（上部の枠が薄い）ウィンドウもアプリ表示とみなす
+const IS_MOBILE=/iPhone|iPad|Android/i.test(navigator.userAgent);
+const PC_APP = !IS_MOBILE && ( standalone
+  || matchMedia('(display-mode: minimal-ui)').matches
+  || matchMedia('(display-mode: window-controls-overlay)').matches
+  || (window.outerHeight-window.innerHeight>0 && window.outerHeight-window.innerHeight<60) );
 if(PC_APP || /[?&]pcapp=1/.test(location.search)){
   // PCでアプリとして起動したとき：iPhoneと同じ縦横比（393:852）のまま小さめのウィンドウにし、
   // 中身はウィンドウ幅いっぱいに縮小表示する（左右の余白なし）
